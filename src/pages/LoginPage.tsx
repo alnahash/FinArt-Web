@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signIn, signUp } from '../services/db'
+import { signIn, signUp, getCategories } from '../services/db'
+import { supabase } from '../lib/supabase'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -17,8 +18,15 @@ export default function LoginPage() {
     setLoading(true)
     try {
       if (mode === 'login') {
-        const { error: err } = await signIn(email, password)
+        const { data, error: err } = await signIn(email, password)
         if (err) throw err
+        // Seed categories if missing (e.g. signup happened before categories were created)
+        if (data.user) {
+          const { data: cats } = await getCategories(data.user.id)
+          if (!cats || cats.length === 0) {
+            try { await supabase.rpc('create_default_categories', { p_user_id: data.user.id }) } catch { /* ignore */ }
+          }
+        }
       } else {
         const { error: err } = await signUp(email, password, fullName)
         if (err) throw err
