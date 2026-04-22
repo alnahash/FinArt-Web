@@ -21,7 +21,7 @@ export const signOut = () => supabase.auth.signOut()
 export const getProfile = (userId: string) =>
   supabase.from('profiles').select('*').eq('id', userId).single()
 
-export const updateProfile = (userId: string, updates: Partial<{ full_name: string; monthly_budget: number; currency: string }>) =>
+export const updateProfile = (userId: string, updates: Partial<{ full_name: string; monthly_budget: number; currency: string; month_start_day: number; hide_amounts: boolean }>) =>
   supabase.from('profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', userId)
 
 // ── Categories ────────────────────────────────────────────────────────────────

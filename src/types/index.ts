@@ -3,6 +3,8 @@ export interface Profile {
   full_name: string | null
   currency: string
   monthly_budget: number
+  month_start_day: number
+  hide_amounts: boolean
   created_at: string
   updated_at: string
 }
