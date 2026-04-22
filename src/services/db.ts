@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { Transaction, Category, Budget, MonthlySummary, CategorySpending, TransactionFilters } from '../types'
+import type { Transaction, Category, CategoryGroup, Budget, MonthlySummary, CategorySpending, TransactionFilters } from '../types'
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -27,13 +27,22 @@ export const updateProfile = (userId: string, updates: Partial<{ full_name: stri
 // ── Categories ────────────────────────────────────────────────────────────────
 
 export const getCategories = (userId: string) =>
-  supabase.from('categories').select('*').eq('user_id', userId).order('name')
+  supabase.from('categories').select('*').eq('user_id', userId).order('sort_order').order('name')
 
-export const createCategory = (userId: string, cat: { name: string; icon?: string; color?: string; budget_limit?: number }) =>
+export const createCategory = (userId: string, cat: { name: string; icon?: string; color?: string; budget_limit?: number; parent_id?: string }) =>
   supabase.from('categories').insert({ user_id: userId, ...cat }).select().single()
 
 export const deleteCategory = (id: string) =>
   supabase.from('categories').delete().eq('id', id)
+
+/** Groups flat categories into a tree: [ { group, children[] } ] */
+export function buildCategoryTree(categories: Category[]): CategoryGroup[] {
+  const groups = categories.filter(c => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order)
+  return groups.map(group => ({
+    group,
+    children: categories.filter(c => c.parent_id === group.id).sort((a, b) => a.sort_order - b.sort_order),
+  }))
+}
 
 // ── Transactions ──────────────────────────────────────────────────────────────
 
@@ -102,9 +111,8 @@ export const getCategorySpending = async (userId: string, month: number, year: n
 
   const { data: txs } = await supabase
     .from('transactions')
-    .select('category_id, amount')
+    .select('category_id, amount, type')
     .eq('user_id', userId)
-    .eq('type', 'debit')
     .gte('transaction_date', from)
     .lte('transaction_date', to)
 
@@ -115,25 +123,30 @@ export const getCategorySpending = async (userId: string, month: number, year: n
     .eq('month', month)
     .eq('year', year)
 
-  const spentMap: Record<string, number> = {}
+  const debitMap: Record<string, number> = {}
+  const creditMap: Record<string, number> = {}
   for (const tx of txs ?? []) {
-    if (tx.category_id) spentMap[tx.category_id] = (spentMap[tx.category_id] ?? 0) + Number(tx.amount)
+    if (!tx.category_id) continue
+    if (tx.type === 'debit') debitMap[tx.category_id] = (debitMap[tx.category_id] ?? 0) + Number(tx.amount)
+    else creditMap[tx.category_id] = (creditMap[tx.category_id] ?? 0) + Number(tx.amount)
   }
+
   const budgetMap: Record<string, number> = {}
   for (const b of budgets ?? []) {
     if (b.category_id) budgetMap[b.category_id] = Number(b.amount)
   }
 
+  // Only sub-categories (parent_id != null)
   return categories
-    .map(cat => ({
-      category: cat,
-      spent: spentMap[cat.id] ?? 0,
-      budget: budgetMap[cat.id] ?? cat.budget_limit ?? 0,
-      percentage: 0,
-    }))
-    .map(c => ({ ...c, percentage: c.budget > 0 ? Math.min((c.spent / c.budget) * 100, 100) : 0 }))
+    .filter(c => c.parent_id !== null)
+    .map(cat => {
+      const isIncome = cat.is_income
+      const spent = isIncome ? (creditMap[cat.id] ?? 0) : (debitMap[cat.id] ?? 0)
+      const budget = budgetMap[cat.id] ?? cat.budget_limit ?? 0
+      return { category: cat, spent, budget, isIncome, percentage: budget > 0 ? Math.min((spent / budget) * 100, 100) : 0 }
+    })
     .filter(c => c.spent > 0 || c.budget > 0)
-    .sort((a, b) => b.spent - a.spent)
+    .sort((a, b) => (a.category.sort_order ?? 0) - (b.category.sort_order ?? 0))
 }
 
 // ── Budgets ───────────────────────────────────────────────────────────────────

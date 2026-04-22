@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Category } from '../types'
+import { buildCategoryTree } from '../services/db'
 
 interface Props {
   categories: Category[]
@@ -27,6 +28,13 @@ export default function AddTransactionModal({ categories, onClose, onSave }: Pro
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const tree = buildCategoryTree(categories)
+  // For income type, suggest income categories; for debit suggest expense categories
+  const relevantGroups = tree.filter(g =>
+    type === 'credit' ? g.group.name === 'INCOME' || g.group.name === 'FINANCIAL'
+    : g.group.name !== 'INCOME'
+  )
 
   const handleSave = async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -64,27 +72,36 @@ export default function AddTransactionModal({ categories, onClose, onSave }: Pro
             {(['debit', 'credit'] as const).map(t => (
               <button
                 key={t}
-                onClick={() => setType(t)}
-                className={`flex-1 py-2 text-sm font-medium transition-colors capitalize ${
+                onClick={() => { setType(t); setCategoryId('') }}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
                   type === t
                     ? t === 'debit' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {t === 'debit' ? '↑ Debit' : '↓ Credit'}
+                {t === 'debit' ? '↑ Expense' : '↓ Income'}
               </button>
             ))}
           </div>
 
-          <input className="input" type="number" placeholder="Amount (₹) *" value={amount} onChange={e => setAmount(e.target.value)} />
+          <input className="input" type="number" placeholder="Amount *" value={amount} onChange={e => setAmount(e.target.value)} />
           <input className="input" type="text" placeholder="Merchant / Payee" value={merchant} onChange={e => setMerchant(e.target.value)} />
-          <input className="input" type="text" placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} />
+          <input className="input" type="text" placeholder="Description / note" value={description} onChange={e => setDescription(e.target.value)} />
           <input className="input" type="text" placeholder="Bank Name" value={bankName} onChange={e => setBankName(e.target.value)} />
-          <input className="input" type="text" placeholder="Account Number (last 4)" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
+          <input className="input" type="text" placeholder="Account (last 4 digits)" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
 
+          {/* Grouped category select */}
           <select className="input" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
             <option value="">No Category</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {relevantGroups.map(({ group, children }) => (
+              children.length > 0 ? (
+                <optgroup key={group.id} label={group.name}>
+                  {children.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </optgroup>
+              ) : null
+            ))}
           </select>
 
           <input className="input" type="datetime-local" value={date} onChange={e => setDate(e.target.value)} />

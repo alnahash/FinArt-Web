@@ -14,7 +14,15 @@ export interface Category {
   icon: string | null
   color: string
   budget_limit: number
+  parent_id: string | null
+  sort_order: number
+  is_income: boolean
   created_at: string
+}
+
+export interface CategoryGroup {
+  group: Category
+  children: Category[]
 }
 
 export interface Transaction {
@@ -57,6 +65,7 @@ export interface CategorySpending {
   spent: number
   budget: number
   percentage: number
+  isIncome: boolean
 }
 
 export interface TransactionFilters {

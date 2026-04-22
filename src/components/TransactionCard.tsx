@@ -2,9 +2,26 @@ import { format } from 'date-fns'
 import type { Transaction } from '../types'
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  'Food & Dining': '🍔', 'Shopping': '🛍', 'Transport': '🚗', 'Utilities': '💡',
-  'Entertainment': '🎬', 'Health': '🏥', 'Education': '📚', 'EMI/Loans': '🏦',
-  'Investments': '📈', 'Others': '💼',
+  // Groups
+  'INCOME': '💰', 'FIXED BILLS': '📋', 'ANNUAL': '📅', 'FAMILY': '👨‍👩‍👧‍👦',
+  'FOOD': '🍽️', 'TRANSPORT': '🚗', 'LIFESTYLE': '✨', 'FINANCIAL': '💳',
+  // INCOME
+  'Salary': '💰', 'Rental income': '🏠', 'Other income': '💵',
+  // FIXED BILLS
+  'Telecom': '📱', 'Utilities': '💡', 'House help': '🏡', 'Monthly subscriptions': '📦',
+  // ANNUAL
+  'Insurance': '🛡️', 'Annual subscriptions': '🔄', 'Government fees': '🏛️',
+  // FAMILY
+  'School fees': '🏫', 'Zainab': '👩', 'Noor': '👧', 'Shahad': '👧', 'Ahmed': '👦',
+  'Gifts & occasions': '🎁',
+  // FOOD
+  'Groceries': '🛒', 'Dining out': '🍽️', 'Coffee shop': '☕',
+  // TRANSPORT
+  'Fuel': '⛽', 'Car service': '🔧', 'Health': '🏥',
+  // LIFESTYLE
+  'Shopping': '🛍️', 'SPA & wellness': '💆', 'Travel': '✈️',
+  // FINANCIAL
+  'Savings transfer': '🏦', 'Investment': '📈',
 }
 
 interface Props {
@@ -13,7 +30,7 @@ interface Props {
 }
 
 export default function TransactionCard({ tx, onClick }: Props) {
-  const emoji = tx.category ? (CATEGORY_EMOJI[tx.category.name] ?? '💼') : '💬'
+  const emoji = tx.category ? (CATEGORY_EMOJI[tx.category.name] ?? '💬') : '💬'
   const color = tx.category?.color ?? '#6366f1'
   const title = tx.merchant || tx.bank_name || 'Transaction'
   const sub = tx.category?.name ?? (tx.account_number ? `A/C ${tx.account_number}` : 'Uncategorised')
