@@ -149,6 +149,37 @@ export const getCategorySpending = async (userId: string, month: number, year: n
     .sort((a, b) => (a.category.sort_order ?? 0) - (b.category.sort_order ?? 0))
 }
 
+export const getMonthlyTotals = async (
+  userId: string,
+  periods: { month: number; year: number }[]
+): Promise<{ month: number; year: number; debit: number; credit: number }[]> => {
+  if (!periods.length) return []
+  const first = periods[0], last = periods[periods.length - 1]
+  const from = new Date(first.year, first.month - 1, 1).toISOString()
+  const to = new Date(last.year, last.month, 0, 23, 59, 59).toISOString()
+
+  const { data } = await supabase
+    .from('transactions')
+    .select('type, amount, transaction_date')
+    .eq('user_id', userId)
+    .gte('transaction_date', from)
+    .lte('transaction_date', to)
+
+  return periods.map(({ month, year }) => {
+    const start = new Date(year, month - 1, 1)
+    const end = new Date(year, month, 0, 23, 59, 59)
+    const rows = (data ?? []).filter(t => {
+      const d = new Date(t.transaction_date)
+      return d >= start && d <= end
+    })
+    return {
+      month, year,
+      debit: rows.filter(t => t.type === 'debit').reduce((s, t) => s + Number(t.amount), 0),
+      credit: rows.filter(t => t.type === 'credit').reduce((s, t) => s + Number(t.amount), 0),
+    }
+  })
+}
+
 // ── Budgets ───────────────────────────────────────────────────────────────────
 
 export const getBudgets = (userId: string, month: number, year: number) =>
