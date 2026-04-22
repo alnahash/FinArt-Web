@@ -7,9 +7,13 @@ import type { MonthlySummary, CategorySpending, Transaction, Category } from '..
 import TransactionCard from '../components/TransactionCard'
 import AddTransactionModal from '../components/AddTransactionModal'
 import TransactionDetailModal from '../components/TransactionDetailModal'
+import { useProfile } from '../hooks/useProfile'
+import { fmt as fmtCurrency } from '../lib/currency'
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const profile = useProfile()
+  const currency = profile?.currency ?? 'BHD'
   const navigate = useNavigate()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [summary, setSummary] = useState<MonthlySummary | null>(null)
@@ -48,7 +52,7 @@ export default function DashboardPage() {
     await loadData()
   }
 
-  const fmt = (n: number) => `₹${Math.abs(n).toLocaleString('en-IN')}`
+  const fmt = (n: number) => fmtCurrency(n, currency)
 
   return (
     <div className="p-4 space-y-4">
@@ -89,8 +93,8 @@ export default function DashboardPage() {
               <div className="flex justify-between text-xs">
                 <span className="text-slate-300">{cs.category.name}</span>
                 <span className="text-slate-400">
-                  ₹{cs.spent.toLocaleString('en-IN')}
-                  {cs.budget > 0 && ` / ₹${cs.budget.toLocaleString('en-IN')}`}
+                  {fmtCurrency(cs.spent, currency)}
+                  {cs.budget > 0 && ` / ${fmtCurrency(cs.budget, currency)}`}
                 </span>
               </div>
               <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
@@ -140,6 +144,7 @@ export default function DashboardPage() {
       {showAdd && (
         <AddTransactionModal
           categories={categories}
+          currency={currency}
           onClose={() => setShowAdd(false)}
           onSave={handleAddTx}
         />

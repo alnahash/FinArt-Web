@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { format, addMonths, subMonths } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
+import { useProfile } from '../hooks/useProfile'
 import { getTransactions, getCategories, insertTransaction } from '../services/db'
 import type { Transaction, Category } from '../types'
 import TransactionCard from '../components/TransactionCard'
@@ -11,6 +12,8 @@ const PAGE = 25
 
 export default function TransactionsPage() {
   const { user } = useAuth()
+  const profile = useProfile()
+  const currency = profile?.currency ?? 'BHD'
   const [currentDate, setCurrentDate] = useState(new Date())
   const [txs, setTxs] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -157,6 +160,7 @@ export default function TransactionsPage() {
       {showAdd && (
         <AddTransactionModal
           categories={categories}
+          currency={currency}
           onClose={() => setShowAdd(false)}
           onSave={handleAddTx}
         />
