@@ -33,7 +33,6 @@ export default function SettingsPage() {
   const [newCatParent, setNewCatParent] = useState('')
   const [addingCat, setAddingCat] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
   const [showCatSection, setShowCatSection] = useState(false)
 
   const loadCategories = async () => {
@@ -228,37 +227,37 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* Grouped list */}
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            {/* Category tree */}
+            <div className="space-y-1 max-h-[32rem] overflow-y-auto">
               {tree.map(({ group, children }) => (
-                <div key={group.id} className="rounded-xl overflow-hidden border border-slate-700">
-                  <button
-                    onClick={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
-                    className="w-full flex items-center gap-2 px-3 py-2 bg-slate-700/60 hover:bg-slate-700 transition-colors"
+                <div key={group.id}>
+                  {/* ── Parent group ── */}
+                  <div
+                    className="flex items-center gap-2.5 px-2 py-2 rounded-lg"
+                    style={{ borderLeft: `3px solid ${group.color}` }}
                   >
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
-                    <span className="text-sm font-semibold text-slate-200 flex-1 text-left tracking-wide">{group.name}</span>
-                    <span className="text-xs text-slate-400">{children.length}</span>
-                    <span className="text-slate-500 text-xs">{expandedGroup === group.id ? '▾' : '›'}</span>
-                  </button>
-                  {expandedGroup === group.id && (
-                    <div className="divide-y divide-slate-700/50">
-                      {children.map(cat => (
-                        <div key={cat.id} className="flex items-center gap-2 px-4 py-2 hover:bg-slate-700/30 group">
-                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                          <span className="text-sm text-slate-300 flex-1">{cat.name}</span>
-                          {cat.is_income && <span className="text-xs text-green-500">income</span>}
-                          <button
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all text-xs px-1.5 py-0.5 rounded"
-                          >✕</button>
-                        </div>
-                      ))}
-                      {children.length === 0 && (
-                        <p className="px-4 py-2 text-xs text-slate-500">No sub-categories yet</p>
-                      )}
-                    </div>
-                  )}
+                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
+                    <span className="text-sm font-bold text-slate-100 uppercase tracking-wide flex-1">{group.name}</span>
+                    <span className="text-xs text-slate-500">{children.length}</span>
+                  </div>
+
+                  {/* ── Sub-categories ── */}
+                  <div className="ml-4 border-l border-slate-700/60 mb-2">
+                    {children.map(cat => (
+                      <div key={cat.id} className="flex items-center gap-2 pl-4 pr-2 py-1.5 hover:bg-slate-700/20 rounded-r-lg group">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                        <span className="text-sm text-slate-300 flex-1">{cat.name}</span>
+                        {cat.is_income && <span className="text-xs text-green-500 px-1">income</span>}
+                        <button
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all text-xs px-1.5 py-0.5 rounded"
+                        >✕</button>
+                      </div>
+                    ))}
+                    {children.length === 0 && (
+                      <p className="pl-4 py-1.5 text-xs text-slate-600 italic">No sub-categories</p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
