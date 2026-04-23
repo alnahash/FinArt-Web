@@ -35,6 +35,11 @@ export const createCategory = (userId: string, cat: { name: string; icon?: strin
 export const updateCategory = (id: string, updates: { name?: string; color?: string; is_income?: boolean; recurrence_type?: string }) =>
   supabase.from('categories').update(updates).eq('id', id)
 
+export const reorderCategories = (items: { id: string; sort_order: number }[]) =>
+  Promise.all(items.map(({ id, sort_order }) =>
+    supabase.from('categories').update({ sort_order }).eq('id', id)
+  ))
+
 export const deleteCategory = (id: string) =>
   supabase.from('categories').delete().eq('id', id)
 

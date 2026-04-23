@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
-import { getProfile, updateProfile, signOut, getCategories, createCategory, updateCategory, deleteCategory, buildCategoryTree } from '../services/db'
+import { getProfile, updateProfile, signOut, getCategories, createCategory, updateCategory, deleteCategory, reorderCategories, buildCategoryTree } from '../services/db'
 import type { Profile, Category, CategoryGroup } from '../types'
 
 const MONTHS = [
@@ -51,6 +51,8 @@ export default function SettingsPage() {
   const [editIsIncome, setEditIsIncome] = useState(false)
   const [editRecurrenceType, setEditRecurrenceType] = useState<'none' | 'one_time' | 'monthly' | 'weekly'>('none')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const loadCategories = async () => {
     if (!user) return
@@ -135,6 +137,32 @@ export default function SettingsPage() {
 
   const handleDeleteCategory = async (id: string) => {
     await deleteCategory(id)
+    await loadCategories()
+  }
+
+  const handleDrop = async (draggedCat: Category, targetCat: Category) => {
+    if (draggedCat.id === targetCat.id) return
+    if (draggedCat.parent_id !== targetCat.parent_id) return
+    if (!draggedCat.parent_id && draggedCat.is_income !== targetCat.is_income) return
+
+    let items: Category[]
+    if (!draggedCat.parent_id) {
+      items = tree.filter(({ group }) => !!group.is_income === draggedCat.is_income).map(({ group }) => group)
+    } else {
+      const parent = tree.find(({ group }) => group.id === draggedCat.parent_id)
+      if (!parent) return
+      items = parent.children
+    }
+
+    const from = items.findIndex(c => c.id === draggedCat.id)
+    const to = items.findIndex(c => c.id === targetCat.id)
+    const reordered = [...items]
+    const [moved] = reordered.splice(from, 1)
+    reordered.splice(to, 0, moved)
+
+    await reorderCategories(reordered.map((cat, i) => ({ id: cat.id, sort_order: i })))
+    setDragId(null)
+    setDragOverId(null)
     await loadCategories()
   }
 
@@ -258,8 +286,6 @@ export default function SettingsPage() {
 
             {/* ── Add form ── */}
             <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-
-              {/* Tab switcher */}
               <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
                 {(['main', 'sub'] as const).map(tab => (
                   <button
@@ -277,8 +303,6 @@ export default function SettingsPage() {
               </div>
 
               <div className="p-3 space-y-2.5" style={{ backgroundColor: 'var(--bg-muted)' }}>
-
-                {/* Name + colour */}
                 <div className="flex gap-2">
                   <input
                     className="input flex-1 text-sm"
@@ -297,35 +321,21 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                {/* Income / Expense toggle — only for main category */}
                 {addTab === 'main' && (
                   <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
                     <button
                       onClick={() => setNewCatIsIncome(false)}
-                      className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-                        !newCatIsIncome
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'text-secondary hover:text-primary'
-                      }`}
+                      className={`flex-1 py-2 text-sm font-semibold transition-colors ${!newCatIsIncome ? 'bg-red-500/20 text-red-400' : 'text-secondary hover:text-primary'}`}
                       style={newCatIsIncome ? { backgroundColor: 'var(--bg-input)' } : {}}
-                    >
-                      📉 Expense
-                    </button>
+                    >📉 Expense</button>
                     <button
                       onClick={() => setNewCatIsIncome(true)}
-                      className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-                        newCatIsIncome
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'text-secondary hover:text-primary'
-                      }`}
+                      className={`flex-1 py-2 text-sm font-semibold transition-colors ${newCatIsIncome ? 'bg-green-500/20 text-green-400' : 'text-secondary hover:text-primary'}`}
                       style={!newCatIsIncome ? { backgroundColor: 'var(--bg-input)' } : {}}
-                    >
-                      📈 Income
-                    </button>
+                    >📈 Income</button>
                   </div>
                 )}
 
-                {/* Parent selector — only for sub-category */}
                 {addTab === 'sub' && (
                   <select
                     className="input text-sm"
@@ -337,15 +347,14 @@ export default function SettingsPage() {
                   </select>
                 )}
 
-                {/* Type selector */}
                 <div>
                   <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-3)' }}>Type</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {([
-                      { value: 'none',     label: 'None' },
-                      { value: 'one_time', label: 'One Time' },
-                      { value: 'monthly',  label: 'Monthly' },
-                      { value: 'weekly',   label: 'Weekly' },
+                      { value: 'none',     label: '— None' },
+                      { value: 'one_time', label: '1️⃣ One Time' },
+                      { value: 'monthly',  label: '🔁 Monthly' },
+                      { value: 'weekly',   label: '🔁 Weekly' },
                     ] as const).map(opt => (
                       <button
                         key={opt.value}
@@ -356,11 +365,7 @@ export default function SettingsPage() {
                             : 'border-transparent text-secondary hover:text-primary'
                         }`}
                         style={newCatType !== opt.value ? { backgroundColor: 'var(--bg-input)' } : {}}
-                      >
-                        {opt.value === 'monthly' ? '🔁 Monthly' :
-                         opt.value === 'weekly'  ? '🔁 Weekly'  :
-                         opt.value === 'one_time'? '1️⃣ One Time' : '— None'}
-                      </button>
+                      >{opt.label}</button>
                     ))}
                   </div>
                 </div>
@@ -392,9 +397,23 @@ export default function SettingsPage() {
                       {section.length === 0 && (
                         <p className="text-xs italic px-2" style={{ color: 'var(--text-3)' }}>No {kind} categories yet</p>
                       )}
-                      {section.map(({ group, children }) => (
-                        <div key={group.id} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-                          {/* Main category row / edit form */}
+                      {section.map(({ group, children }, groupIdx) => (
+                        <div
+                          key={group.id}
+                          className={`rounded-xl overflow-hidden border transition-opacity ${dragId && dragId !== group.id && !children.some(c => c.id === dragId) ? 'opacity-60' : ''}`}
+                          style={{
+                            borderColor: dragOverId === group.id && dragId !== group.id ? group.color : 'var(--border)',
+                            borderWidth: dragOverId === group.id && dragId !== group.id ? 2 : 1,
+                          }}
+                          onDragOver={e => { e.preventDefault(); setDragOverId(group.id) }}
+                          onDrop={e => {
+                            e.preventDefault()
+                            const dragged = allCats.find(c => c.id === dragId)
+                            if (dragged) handleDrop(dragged, group)
+                          }}
+                          onDragLeave={() => setDragOverId(null)}
+                        >
+                          {/* Main category row / inline edit */}
                           {editingId === group.id ? (
                             <InlineEditForm
                               cat={group}
@@ -408,9 +427,14 @@ export default function SettingsPage() {
                             />
                           ) : (
                             <div
-                              className="flex items-center gap-2.5 px-3 py-2.5 group"
+                              draggable
+                              onDragStart={() => setDragId(group.id)}
+                              onDragEnd={() => { setDragId(null); setDragOverId(null) }}
+                              className="flex items-center gap-2 px-2 py-2.5 group cursor-grab active:cursor-grabbing"
                               style={{ backgroundColor: 'var(--bg-surface)', borderLeft: `4px solid ${group.color}` }}
                             >
+                              <span className="text-base select-none opacity-30 group-hover:opacity-70 transition-opacity flex-shrink-0" style={{ color: 'var(--text-3)' }}>⠿</span>
+                              <span className="text-xs font-bold tabular-nums w-5 flex-shrink-0" style={{ color: group.color }}>{groupIdx + 1}</span>
                               <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
                               <span className="text-sm font-bold uppercase tracking-wide flex-1" style={{ color: 'var(--text-1)' }}>
                                 {group.name}
@@ -421,7 +445,7 @@ export default function SettingsPage() {
                               </span>
                               <button
                                 onClick={() => handleStartEdit(group)}
-                                className="text-xs opacity-0 group-hover:opacity-100 hover:text-purple-400 transition-colors ml-1"
+                                className="text-xs opacity-0 group-hover:opacity-100 hover:text-purple-400 transition-colors"
                                 style={{ color: 'var(--text-3)' }}
                               >✎</button>
                               <button
@@ -431,9 +455,10 @@ export default function SettingsPage() {
                               >✕</button>
                             </div>
                           )}
+
                           {/* Sub-category rows */}
                           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                            {children.map(cat => (
+                            {children.map((cat, childIdx) => (
                               editingId === cat.id ? (
                                 <InlineEditForm
                                   key={cat.id}
@@ -450,10 +475,26 @@ export default function SettingsPage() {
                               ) : (
                                 <div
                                   key={cat.id}
-                                  className="flex items-center gap-2.5 pl-8 pr-3 py-2 group"
-                                  style={{ backgroundColor: 'var(--bg-card)' }}
+                                  draggable
+                                  onDragStart={() => setDragId(cat.id)}
+                                  onDragEnd={() => { setDragId(null); setDragOverId(null) }}
+                                  onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOverId(cat.id) }}
+                                  onDrop={e => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    const dragged = allCats.find(c => c.id === dragId)
+                                    if (dragged) handleDrop(dragged, cat)
+                                  }}
+                                  onDragLeave={() => setDragOverId(null)}
+                                  className="flex items-center gap-2 pl-6 pr-3 py-2 group cursor-grab active:cursor-grabbing transition-colors"
+                                  style={{
+                                    backgroundColor: dragOverId === cat.id && dragId !== cat.id ? cat.color + '15' : 'var(--bg-card)',
+                                    borderLeft: dragOverId === cat.id && dragId !== cat.id ? `2px solid ${cat.color}` : undefined,
+                                  }}
                                 >
-                                  <span className="text-secondary text-xs">└</span>
+                                  <span className="text-sm select-none opacity-30 group-hover:opacity-70 transition-opacity flex-shrink-0" style={{ color: 'var(--text-3)' }}>⠿</span>
+                                  <span className="text-secondary text-xs flex-shrink-0">└</span>
+                                  <span className="text-xs tabular-nums flex-shrink-0" style={{ color: cat.color }}>{groupIdx + 1}.{childIdx + 1}</span>
                                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
                                   <span className="text-sm flex-1" style={{ color: 'var(--text-1)' }}>{cat.name}</span>
                                   {cat.recurrence_type !== 'none' && <RecurrenceBadge type={cat.recurrence_type} />}
@@ -492,7 +533,6 @@ export default function SettingsPage() {
         <SettingRow icon="ℹ️" title="FinArt Web" subtitle={`Connected to Supabase · ${allCats.length} categories`} />
       </Section>
 
-      {/* ── Save button (shown when dirty) ── */}
       {saving && (
         <div className="px-4">
           <div className="btn-primary w-full text-center py-3 text-sm opacity-60">Saving…</div>
