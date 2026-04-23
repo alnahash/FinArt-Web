@@ -10,8 +10,8 @@ import SettingsPage from './pages/SettingsPage'
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return (
-    <div className="flex items-center justify-center h-screen bg-slate-950">
-      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    <div className="flex items-center justify-center h-screen bg-app">
+      <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
   return user ? <>{children}</> : <Navigate to="/login" replace />
