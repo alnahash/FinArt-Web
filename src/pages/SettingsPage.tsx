@@ -4,6 +4,11 @@ import { useAuth } from '../hooks/useAuth'
 import { getProfile, updateProfile, signOut, getCategories, createCategory, deleteCategory, buildCategoryTree } from '../services/db'
 import type { Profile, Category, CategoryGroup } from '../types'
 
+const MONTHS = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+]
+
 const CURRENCIES = [
   { code: 'BHD', label: 'Bahrain (BHD)' },
   { code: 'SAR', label: 'Saudi Arabia (SAR)' },
@@ -25,6 +30,7 @@ export default function SettingsPage() {
   const [budgetEnabled, setBudgetEnabled] = useState(false)
   const [currency, setCurrency] = useState('BHD')
   const [monthStartDay, setMonthStartDay] = useState(1)
+  const [startMonth, setStartMonth] = useState(1)
   const [hideAmounts, setHideAmounts] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -54,6 +60,7 @@ export default function SettingsPage() {
         setBudgetEnabled((p.monthly_budget ?? 0) > 0)
         setCurrency(p.currency ?? 'BHD')
         setMonthStartDay(p.month_start_day ?? 1)
+        setStartMonth(p.start_month ?? 1)
         setHideAmounts(p.hide_amounts ?? false)
       }
       const cats = catsRes.data ?? []
@@ -78,6 +85,7 @@ export default function SettingsPage() {
       monthly_budget: budgetEnabled ? Number(monthlyBudget) || 0 : 0,
       currency,
       month_start_day: monthStartDay,
+      start_month: startMonth,
       hide_amounts: hideAmounts,
     })
 
@@ -170,6 +178,18 @@ export default function SettingsPage() {
             onChange={e => setMonthStartDay(Number(e.target.value))}
             onBlur={() => saveProfile({ month_start_day: monthStartDay })}
           />
+        </SettingRow>
+
+        <SettingRow icon="🗓️" title="Start Month" subtitle={MONTHS[startMonth - 1]}>
+          <select
+            className="bg-transparent text-slate-400 text-sm focus:outline-none cursor-pointer appearance-none"
+            value={startMonth}
+            onChange={e => { setStartMonth(Number(e.target.value)); saveProfile({ start_month: Number(e.target.value) }) }}
+          >
+            {MONTHS.map((m, i) => (
+              <option key={i + 1} value={i + 1} className="bg-slate-900">{m}</option>
+            ))}
+          </select>
         </SettingRow>
       </Section>
 
