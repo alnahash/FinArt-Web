@@ -29,7 +29,7 @@ export const updateProfile = (userId: string, updates: Partial<{ full_name: stri
 export const getCategories = (userId: string) =>
   supabase.from('categories').select('*').eq('user_id', userId).order('sort_order').order('name')
 
-export const createCategory = (userId: string, cat: { name: string; icon?: string; color?: string; budget_limit?: number; parent_id?: string; recurrence_type?: string }) =>
+export const createCategory = (userId: string, cat: { name: string; icon?: string; color?: string; budget_limit?: number; parent_id?: string; recurrence_type?: string; is_income?: boolean }) =>
   supabase.from('categories').insert({ user_id: userId, ...cat }).select().single()
 
 export const deleteCategory = (id: string) =>

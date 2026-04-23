@@ -40,6 +40,7 @@ export default function SettingsPage() {
   const [newCatColor, setNewCatColor] = useState('#6366f1')
   const [newCatParent, setNewCatParent] = useState('')
   const [newCatType, setNewCatType] = useState<'none' | 'one_time' | 'monthly' | 'weekly'>('none')
+  const [newCatIsIncome, setNewCatIsIncome] = useState(false)
   const [addTab, setAddTab] = useState<'main' | 'sub'>('main')
   const [addingCat, setAddingCat] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -101,6 +102,7 @@ export default function SettingsPage() {
       color: newCatColor,
       parent_id: addTab === 'sub' ? (newCatParent || undefined) : undefined,
       recurrence_type: newCatType,
+      is_income: addTab === 'main' ? newCatIsIncome : undefined,
     })
     if (data) { setNewCatName(''); setNewCatType('none'); await loadCategories() }
     setAddingCat(false)
@@ -270,6 +272,34 @@ export default function SettingsPage() {
                   />
                 </div>
 
+                {/* Income / Expense toggle — only for main category */}
+                {addTab === 'main' && (
+                  <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+                    <button
+                      onClick={() => setNewCatIsIncome(false)}
+                      className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                        !newCatIsIncome
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'text-secondary hover:text-primary'
+                      }`}
+                      style={newCatIsIncome ? { backgroundColor: 'var(--bg-input)' } : {}}
+                    >
+                      📉 Expense
+                    </button>
+                    <button
+                      onClick={() => setNewCatIsIncome(true)}
+                      className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                        newCatIsIncome
+                          ? 'bg-green-500/20 text-green-400'
+                          : 'text-secondary hover:text-primary'
+                      }`}
+                      style={!newCatIsIncome ? { backgroundColor: 'var(--bg-input)' } : {}}
+                    >
+                      📈 Income
+                    </button>
+                  </div>
+                )}
+
                 {/* Parent selector — only for sub-category */}
                 {addTab === 'sub' && (
                   <select
@@ -321,62 +351,72 @@ export default function SettingsPage() {
             </div>
 
             {/* ── Category tree ── */}
-            <div className="space-y-2 max-h-[36rem] overflow-y-auto">
-              {tree.map(({ group, children }) => (
-                <div key={group.id} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-
-                  {/* Main category row */}
-                  <div
-                    className="flex items-center gap-2.5 px-3 py-2.5"
-                    style={{ backgroundColor: 'var(--bg-surface)', borderLeft: `4px solid ${group.color}` }}
-                  >
-                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
-                    <span className="text-sm font-bold uppercase tracking-wide flex-1" style={{ color: 'var(--text-1)' }}>
-                      {group.name}
-                    </span>
-                    {group.recurrence_type !== 'none' && (
-                      <RecurrenceBadge type={group.recurrence_type} />
-                    )}
-                    <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-muted)', color: 'var(--text-3)' }}>
-                      {children.length}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteCategory(group.id)}
-                      className="text-xs hover:text-red-400 transition-colors ml-1 opacity-40 hover:opacity-100"
-                      style={{ color: 'var(--text-3)' }}
-                    >✕</button>
+            <div className="space-y-4 max-h-[36rem] overflow-y-auto">
+              {(['expense', 'income'] as const).map(kind => {
+                const isIncome = kind === 'income'
+                const section = tree.filter(({ group }) => !!group.is_income === isIncome)
+                return (
+                  <div key={kind}>
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <span className={`text-xs font-bold uppercase tracking-widest ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
+                        {isIncome ? '📈 Income' : '📉 Expenses'}
+                      </span>
+                      <div className="flex-1 h-px" style={{ backgroundColor: isIncome ? '#22c55e33' : '#ef444433' }} />
+                    </div>
+                    <div className="space-y-2">
+                      {section.length === 0 && (
+                        <p className="text-xs italic px-2" style={{ color: 'var(--text-3)' }}>No {kind} categories yet</p>
+                      )}
+                      {section.map(({ group, children }) => (
+                        <div key={group.id} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+                          <div
+                            className="flex items-center gap-2.5 px-3 py-2.5"
+                            style={{ backgroundColor: 'var(--bg-surface)', borderLeft: `4px solid ${group.color}` }}
+                          >
+                            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
+                            <span className="text-sm font-bold uppercase tracking-wide flex-1" style={{ color: 'var(--text-1)' }}>
+                              {group.name}
+                            </span>
+                            {group.recurrence_type !== 'none' && <RecurrenceBadge type={group.recurrence_type} />}
+                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-muted)', color: 'var(--text-3)' }}>
+                              {children.length}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteCategory(group.id)}
+                              className="text-xs hover:text-red-400 transition-colors ml-1 opacity-40 hover:opacity-100"
+                              style={{ color: 'var(--text-3)' }}
+                            >✕</button>
+                          </div>
+                          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                            {children.map(cat => (
+                              <div
+                                key={cat.id}
+                                className="flex items-center gap-2.5 pl-8 pr-3 py-2 group"
+                                style={{ backgroundColor: 'var(--bg-card)' }}
+                              >
+                                <span className="text-secondary text-xs">└</span>
+                                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                                <span className="text-sm flex-1" style={{ color: 'var(--text-1)' }}>{cat.name}</span>
+                                {cat.recurrence_type !== 'none' && <RecurrenceBadge type={cat.recurrence_type} />}
+                                <button
+                                  onClick={() => handleDeleteCategory(cat.id)}
+                                  className="text-xs hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                  style={{ color: 'var(--text-3)' }}
+                                >✕</button>
+                              </div>
+                            ))}
+                            {children.length === 0 && (
+                              <p className="pl-8 py-2 text-xs italic" style={{ color: 'var(--text-3)', backgroundColor: 'var(--bg-card)' }}>
+                                No sub-categories yet
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-
-                  {/* Sub-categories */}
-                  <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                    {children.map(cat => (
-                      <div
-                        key={cat.id}
-                        className="flex items-center gap-2.5 pl-8 pr-3 py-2 group"
-                        style={{ backgroundColor: 'var(--bg-card)' }}
-                      >
-                        <span className="text-secondary text-xs">└</span>
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                        <span className="text-sm flex-1" style={{ color: 'var(--text-1)' }}>{cat.name}</span>
-                        {cat.is_income && <span className="text-xs text-green-500">income</span>}
-                        {cat.recurrence_type !== 'none' && (
-                          <RecurrenceBadge type={cat.recurrence_type} />
-                        )}
-                        <button
-                          onClick={() => handleDeleteCategory(cat.id)}
-                          className="text-xs hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                          style={{ color: 'var(--text-3)' }}
-                        >✕</button>
-                      </div>
-                    ))}
-                    {children.length === 0 && (
-                      <p className="pl-8 py-2 text-xs italic" style={{ color: 'var(--text-3)', backgroundColor: 'var(--bg-card)' }}>
-                        No sub-categories yet
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
