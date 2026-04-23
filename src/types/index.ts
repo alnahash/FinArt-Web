@@ -10,7 +10,7 @@ export interface Profile {
   updated_at: string
 }
 
-export type RecurrenceType = 'none' | 'one_time' | 'monthly' | 'weekly'
+export type RecurrenceType = 'none' | 'one_time' | 'monthly' | 'weekly' | 'yearly'
 
 export interface Category {
   id: string

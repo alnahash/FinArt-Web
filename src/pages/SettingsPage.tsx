@@ -39,7 +39,7 @@ export default function SettingsPage() {
   const [newCatName, setNewCatName] = useState('')
   const [newCatColor, setNewCatColor] = useState('#6366f1')
   const [newCatParent, setNewCatParent] = useState('')
-  const [newCatType, setNewCatType] = useState<'none' | 'one_time' | 'monthly' | 'weekly'>('none')
+  const [newCatType, setNewCatType] = useState<'none' | 'one_time' | 'monthly' | 'weekly' | 'yearly'>('none')
   const [newCatIsIncome, setNewCatIsIncome] = useState(false)
   const [addTab, setAddTab] = useState<'main' | 'sub'>('main')
   const [addingCat, setAddingCat] = useState(false)
@@ -49,7 +49,7 @@ export default function SettingsPage() {
   const [editName, setEditName] = useState('')
   const [editColor, setEditColor] = useState('#6366f1')
   const [editIsIncome, setEditIsIncome] = useState(false)
-  const [editRecurrenceType, setEditRecurrenceType] = useState<'none' | 'one_time' | 'monthly' | 'weekly'>('none')
+  const [editRecurrenceType, setEditRecurrenceType] = useState<'none' | 'one_time' | 'monthly' | 'weekly' | 'yearly'>('none')
   const [savingEdit, setSavingEdit] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
@@ -349,12 +349,13 @@ export default function SettingsPage() {
 
                 <div>
                   <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-3)' }}>Type</p>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-3 gap-1.5">
                     {([
                       { value: 'none',     label: '— None' },
                       { value: 'one_time', label: '1️⃣ One Time' },
-                      { value: 'monthly',  label: '🔁 Monthly' },
                       { value: 'weekly',   label: '🔁 Weekly' },
+                      { value: 'monthly',  label: '🔁 Monthly' },
+                      { value: 'yearly',   label: '📅 Yearly' },
                     ] as const).map(opt => (
                       <button
                         key={opt.value}
@@ -585,9 +586,10 @@ function SettingRow({ icon, title, subtitle, children }: {
 }
 
 const RECURRENCE_LABELS: Record<string, { label: string; color: string }> = {
-  one_time: { label: 'One Time',  color: '#f59e0b' },
-  monthly:  { label: 'Monthly',   color: '#6366f1' },
-  weekly:   { label: 'Weekly',    color: '#10b981' },
+  one_time: { label: 'One Time', color: '#f59e0b' },
+  weekly:   { label: 'Weekly',   color: '#10b981' },
+  monthly:  { label: 'Monthly',  color: '#6366f1' },
+  yearly:   { label: 'Yearly',   color: '#ec4899' },
 }
 
 function RecurrenceBadge({ type }: { type: string }) {
@@ -648,8 +650,8 @@ function InlineEditForm({ cat, name, onNameChange, color, onColorChange, isIncom
         </div>
       )}
       {!isMain && (
-        <div className="grid grid-cols-4 gap-1">
-          {(['none', 'one_time', 'monthly', 'weekly'] as const).map(t => (
+        <div className="grid grid-cols-5 gap-1">
+          {(['none', 'one_time', 'weekly', 'monthly', 'yearly'] as const).map(t => (
             <button
               key={t}
               onClick={() => onRecurrenceTypeChange(t)}
@@ -658,7 +660,7 @@ function InlineEditForm({ cat, name, onNameChange, color, onColorChange, isIncom
               }`}
               style={recurrenceType !== t ? { backgroundColor: 'var(--bg-input)' } : {}}
             >
-              {t === 'none' ? '—' : t === 'one_time' ? '1×' : t === 'monthly' ? '🔁Mo' : '🔁Wk'}
+              {t === 'none' ? '—' : t === 'one_time' ? '1×' : t === 'weekly' ? '🔁Wk' : t === 'monthly' ? '🔁Mo' : '📅Yr'}
             </button>
           ))}
         </div>
