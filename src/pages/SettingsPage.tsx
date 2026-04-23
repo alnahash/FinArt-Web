@@ -39,6 +39,8 @@ export default function SettingsPage() {
   const [newCatName, setNewCatName] = useState('')
   const [newCatColor, setNewCatColor] = useState('#6366f1')
   const [newCatParent, setNewCatParent] = useState('')
+  const [newCatType, setNewCatType] = useState<'none' | 'one_time' | 'monthly' | 'weekly'>('none')
+  const [addTab, setAddTab] = useState<'main' | 'sub'>('main')
   const [addingCat, setAddingCat] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showCatSection, setShowCatSection] = useState(false)
@@ -97,9 +99,10 @@ export default function SettingsPage() {
     const { data } = await createCategory(user.id, {
       name: newCatName.trim(),
       color: newCatColor,
-      parent_id: newCatParent || undefined,
+      parent_id: addTab === 'sub' ? (newCatParent || undefined) : undefined,
+      recurrence_type: newCatType,
     })
-    if (data) { setNewCatName(''); await loadCategories() }
+    if (data) { setNewCatName(''); setNewCatType('none'); await loadCategories() }
     setAddingCat(false)
   }
 
@@ -217,71 +220,159 @@ export default function SettingsPage() {
         >
           <span className="text-xl w-7 text-center">🏷️</span>
           <div className="flex-1 text-left">
-            <p className="text-slate-200 text-sm font-medium">Categories</p>
-            <p className="text-slate-500 text-xs mt-0.5">{allCats.length} categories configured</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>Categories</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>{allCats.length} categories configured</p>
           </div>
-          <span className="text-slate-500 text-sm">{showCatSection ? '▾' : '›'}</span>
+          <span className="text-sm" style={{ color: 'var(--text-3)' }}>{showCatSection ? '▾' : '›'}</span>
         </button>
 
         {showCatSection && (
-          <div className="border-t border-slate-800 px-4 py-3 space-y-3">
-            {/* Add new */}
-            <div className="space-y-2 bg-slate-800/60 rounded-xl p-3">
-              <p className="text-xs text-slate-400 font-medium">Add Category</p>
-              <div className="flex gap-2">
-                <input
-                  className="input flex-1 text-sm"
-                  type="text"
-                  placeholder="Category name"
-                  value={newCatName}
-                  onChange={e => setNewCatName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
-                />
-                <input
-                  type="color"
-                  value={newCatColor}
-                  onChange={e => setNewCatColor(e.target.value)}
-                  className="w-10 h-10 rounded-xl border border-slate-600 bg-slate-700 cursor-pointer p-1"
-                />
+          <div className="border-t px-4 py-4 space-y-4" style={{ borderColor: 'var(--border)' }}>
+
+            {/* ── Add form ── */}
+            <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+
+              {/* Tab switcher */}
+              <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
+                {(['main', 'sub'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setAddTab(tab)}
+                    className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
+                      addTab === tab
+                        ? 'bg-purple-500/20 text-purple-400 border-b-2 border-purple-500'
+                        : 'text-secondary hover:text-primary'
+                    }`}
+                  >
+                    {tab === 'main' ? '📁 Main Category' : '📄 Sub-Category'}
+                  </button>
+                ))}
               </div>
-              <select className="input text-sm" value={newCatParent} onChange={e => setNewCatParent(e.target.value)}>
-                <option value="">Top-level group (no parent)</option>
-                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-              </select>
-              <button className="btn-primary w-full text-sm py-2" onClick={handleAddCategory} disabled={addingCat}>
-                {addingCat ? 'Adding…' : '+ Add'}
-              </button>
+
+              <div className="p-3 space-y-2.5" style={{ backgroundColor: 'var(--bg-muted)' }}>
+
+                {/* Name + colour */}
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1 text-sm"
+                    type="text"
+                    placeholder={addTab === 'main' ? 'Main category name…' : 'Sub-category name…'}
+                    value={newCatName}
+                    onChange={e => setNewCatName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+                  />
+                  <input
+                    type="color"
+                    value={newCatColor}
+                    onChange={e => setNewCatColor(e.target.value)}
+                    className="w-10 h-10 rounded-xl border cursor-pointer p-1 flex-shrink-0"
+                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}
+                  />
+                </div>
+
+                {/* Parent selector — only for sub-category */}
+                {addTab === 'sub' && (
+                  <select
+                    className="input text-sm"
+                    value={newCatParent}
+                    onChange={e => setNewCatParent(e.target.value)}
+                  >
+                    <option value="">— Select main category —</option>
+                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                )}
+
+                {/* Type selector */}
+                <div>
+                  <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-3)' }}>Type</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                      { value: 'none',     label: 'None' },
+                      { value: 'one_time', label: 'One Time' },
+                      { value: 'monthly',  label: 'Monthly' },
+                      { value: 'weekly',   label: 'Weekly' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setNewCatType(opt.value)}
+                        className={`py-2 rounded-xl text-sm font-medium border transition-colors ${
+                          newCatType === opt.value
+                            ? 'bg-purple-500/20 border-purple-500 text-purple-400'
+                            : 'border-transparent text-secondary hover:text-primary'
+                        }`}
+                        style={newCatType !== opt.value ? { backgroundColor: 'var(--bg-input)' } : {}}
+                      >
+                        {opt.value === 'monthly' ? '🔁 Monthly' :
+                         opt.value === 'weekly'  ? '🔁 Weekly'  :
+                         opt.value === 'one_time'? '1️⃣ One Time' : '— None'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  className="btn-primary w-full text-sm py-2.5"
+                  onClick={handleAddCategory}
+                  disabled={addingCat || !newCatName.trim() || (addTab === 'sub' && !newCatParent)}
+                >
+                  {addingCat ? 'Adding…' : `+ Add ${addTab === 'main' ? 'Main Category' : 'Sub-Category'}`}
+                </button>
+              </div>
             </div>
 
-            {/* Category tree */}
-            <div className="space-y-1 max-h-[32rem] overflow-y-auto">
+            {/* ── Category tree ── */}
+            <div className="space-y-2 max-h-[36rem] overflow-y-auto">
               {tree.map(({ group, children }) => (
-                <div key={group.id}>
-                  {/* ── Parent group ── */}
+                <div key={group.id} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+
+                  {/* Main category row */}
                   <div
-                    className="flex items-center gap-2.5 px-2 py-2 rounded-lg"
-                    style={{ borderLeft: `3px solid ${group.color}` }}
+                    className="flex items-center gap-2.5 px-3 py-2.5"
+                    style={{ backgroundColor: 'var(--bg-surface)', borderLeft: `4px solid ${group.color}` }}
                   >
                     <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
-                    <span className="text-sm font-bold text-slate-100 uppercase tracking-wide flex-1">{group.name}</span>
-                    <span className="text-xs text-slate-500">{children.length}</span>
+                    <span className="text-sm font-bold uppercase tracking-wide flex-1" style={{ color: 'var(--text-1)' }}>
+                      {group.name}
+                    </span>
+                    {group.recurrence_type !== 'none' && (
+                      <RecurrenceBadge type={group.recurrence_type} />
+                    )}
+                    <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-muted)', color: 'var(--text-3)' }}>
+                      {children.length}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteCategory(group.id)}
+                      className="text-xs hover:text-red-400 transition-colors ml-1 opacity-40 hover:opacity-100"
+                      style={{ color: 'var(--text-3)' }}
+                    >✕</button>
                   </div>
 
-                  {/* ── Sub-categories ── */}
-                  <div className="ml-4 border-l border-slate-700/60 mb-2">
+                  {/* Sub-categories */}
+                  <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                     {children.map(cat => (
-                      <div key={cat.id} className="flex items-center gap-2 pl-4 pr-2 py-1.5 hover:bg-slate-700/20 rounded-r-lg group">
+                      <div
+                        key={cat.id}
+                        className="flex items-center gap-2.5 pl-8 pr-3 py-2 group"
+                        style={{ backgroundColor: 'var(--bg-card)' }}
+                      >
+                        <span className="text-secondary text-xs">└</span>
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                        <span className="text-sm text-slate-300 flex-1">{cat.name}</span>
-                        {cat.is_income && <span className="text-xs text-green-500 px-1">income</span>}
+                        <span className="text-sm flex-1" style={{ color: 'var(--text-1)' }}>{cat.name}</span>
+                        {cat.is_income && <span className="text-xs text-green-500">income</span>}
+                        {cat.recurrence_type !== 'none' && (
+                          <RecurrenceBadge type={cat.recurrence_type} />
+                        )}
                         <button
                           onClick={() => handleDeleteCategory(cat.id)}
-                          className="text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all text-xs px-1.5 py-0.5 rounded"
+                          className="text-xs hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                          style={{ color: 'var(--text-3)' }}
                         >✕</button>
                       </div>
                     ))}
                     {children.length === 0 && (
-                      <p className="pl-4 py-1.5 text-xs text-slate-600 italic">No sub-categories</p>
+                      <p className="pl-8 py-2 text-xs italic" style={{ color: 'var(--text-3)', backgroundColor: 'var(--bg-card)' }}>
+                        No sub-categories yet
+                      </p>
                     )}
                   </div>
                 </div>
@@ -340,11 +431,30 @@ function SettingRow({ icon, title, subtitle, children }: {
     <div className="flex items-center gap-3 px-4 py-4">
       <span className="text-xl w-7 text-center">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-slate-200 text-sm font-medium">{title}</p>
-        {subtitle && <p className="text-slate-500 text-xs mt-0.5 truncate">{subtitle}</p>}
+        <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>{title}</p>
+        {subtitle && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-3)' }}>{subtitle}</p>}
       </div>
       {children && <div className="flex-shrink-0">{children}</div>}
     </div>
+  )
+}
+
+const RECURRENCE_LABELS: Record<string, { label: string; color: string }> = {
+  one_time: { label: 'One Time',  color: '#f59e0b' },
+  monthly:  { label: 'Monthly',   color: '#6366f1' },
+  weekly:   { label: 'Weekly',    color: '#10b981' },
+}
+
+function RecurrenceBadge({ type }: { type: string }) {
+  const info = RECURRENCE_LABELS[type]
+  if (!info) return null
+  return (
+    <span
+      className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+      style={{ backgroundColor: info.color + '22', color: info.color }}
+    >
+      {info.label}
+    </span>
   )
 }
 

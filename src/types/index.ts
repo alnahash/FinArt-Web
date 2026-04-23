@@ -10,6 +10,8 @@ export interface Profile {
   updated_at: string
 }
 
+export type RecurrenceType = 'none' | 'one_time' | 'monthly' | 'weekly'
+
 export interface Category {
   id: string
   user_id: string
@@ -20,6 +22,7 @@ export interface Category {
   parent_id: string | null
   sort_order: number
   is_income: boolean
+  recurrence_type: RecurrenceType
   created_at: string
 }
 
