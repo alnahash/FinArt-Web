@@ -32,6 +32,9 @@ export const getCategories = (userId: string) =>
 export const createCategory = (userId: string, cat: { name: string; icon?: string; color?: string; budget_limit?: number; parent_id?: string; recurrence_type?: string; is_income?: boolean }) =>
   supabase.from('categories').insert({ user_id: userId, ...cat }).select().single()
 
+export const updateCategory = (id: string, updates: { name?: string; color?: string; is_income?: boolean; recurrence_type?: string }) =>
+  supabase.from('categories').update(updates).eq('id', id)
+
 export const deleteCategory = (id: string) =>
   supabase.from('categories').delete().eq('id', id)
 

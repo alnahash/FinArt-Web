@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
-import { getProfile, updateProfile, signOut, getCategories, createCategory, deleteCategory, buildCategoryTree } from '../services/db'
+import { getProfile, updateProfile, signOut, getCategories, createCategory, updateCategory, deleteCategory, buildCategoryTree } from '../services/db'
 import type { Profile, Category, CategoryGroup } from '../types'
 
 const MONTHS = [
@@ -45,6 +45,12 @@ export default function SettingsPage() {
   const [addingCat, setAddingCat] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showCatSection, setShowCatSection] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editColor, setEditColor] = useState('#6366f1')
+  const [editIsIncome, setEditIsIncome] = useState(false)
+  const [editRecurrenceType, setEditRecurrenceType] = useState<'none' | 'one_time' | 'monthly' | 'weekly'>('none')
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const loadCategories = async () => {
     if (!user) return
@@ -106,6 +112,25 @@ export default function SettingsPage() {
     })
     if (data) { setNewCatName(''); setNewCatType('none'); await loadCategories() }
     setAddingCat(false)
+  }
+
+  const handleStartEdit = (cat: Category) => {
+    setEditingId(cat.id)
+    setEditName(cat.name)
+    setEditColor(cat.color)
+    setEditIsIncome(cat.is_income)
+    setEditRecurrenceType(cat.recurrence_type)
+  }
+
+  const handleSaveEdit = async (cat: Category) => {
+    setSavingEdit(true)
+    const updates: Parameters<typeof updateCategory>[1] = { name: editName.trim() || cat.name, color: editColor }
+    if (!cat.parent_id) updates.is_income = editIsIncome
+    else updates.recurrence_type = editRecurrenceType
+    await updateCategory(cat.id, updates)
+    setEditingId(null)
+    setSavingEdit(false)
+    await loadCategories()
   }
 
   const handleDeleteCategory = async (id: string) => {
@@ -369,41 +394,81 @@ export default function SettingsPage() {
                       )}
                       {section.map(({ group, children }) => (
                         <div key={group.id} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-                          <div
-                            className="flex items-center gap-2.5 px-3 py-2.5"
-                            style={{ backgroundColor: 'var(--bg-surface)', borderLeft: `4px solid ${group.color}` }}
-                          >
-                            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
-                            <span className="text-sm font-bold uppercase tracking-wide flex-1" style={{ color: 'var(--text-1)' }}>
-                              {group.name}
-                            </span>
-                            {group.recurrence_type !== 'none' && <RecurrenceBadge type={group.recurrence_type} />}
-                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-muted)', color: 'var(--text-3)' }}>
-                              {children.length}
-                            </span>
-                            <button
-                              onClick={() => handleDeleteCategory(group.id)}
-                              className="text-xs hover:text-red-400 transition-colors ml-1 opacity-40 hover:opacity-100"
-                              style={{ color: 'var(--text-3)' }}
-                            >✕</button>
-                          </div>
+                          {/* Main category row / edit form */}
+                          {editingId === group.id ? (
+                            <InlineEditForm
+                              cat={group}
+                              name={editName} onNameChange={setEditName}
+                              color={editColor} onColorChange={setEditColor}
+                              isIncome={editIsIncome} onIsIncomeChange={setEditIsIncome}
+                              recurrenceType={editRecurrenceType} onRecurrenceTypeChange={setEditRecurrenceType}
+                              saving={savingEdit}
+                              onSave={() => handleSaveEdit(group)}
+                              onCancel={() => setEditingId(null)}
+                            />
+                          ) : (
+                            <div
+                              className="flex items-center gap-2.5 px-3 py-2.5 group"
+                              style={{ backgroundColor: 'var(--bg-surface)', borderLeft: `4px solid ${group.color}` }}
+                            >
+                              <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
+                              <span className="text-sm font-bold uppercase tracking-wide flex-1" style={{ color: 'var(--text-1)' }}>
+                                {group.name}
+                              </span>
+                              {group.recurrence_type !== 'none' && <RecurrenceBadge type={group.recurrence_type} />}
+                              <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-muted)', color: 'var(--text-3)' }}>
+                                {children.length}
+                              </span>
+                              <button
+                                onClick={() => handleStartEdit(group)}
+                                className="text-xs opacity-0 group-hover:opacity-100 hover:text-purple-400 transition-colors ml-1"
+                                style={{ color: 'var(--text-3)' }}
+                              >✎</button>
+                              <button
+                                onClick={() => handleDeleteCategory(group.id)}
+                                className="text-xs opacity-0 group-hover:opacity-100 hover:text-red-400 transition-colors"
+                                style={{ color: 'var(--text-3)' }}
+                              >✕</button>
+                            </div>
+                          )}
+                          {/* Sub-category rows */}
                           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                             {children.map(cat => (
-                              <div
-                                key={cat.id}
-                                className="flex items-center gap-2.5 pl-8 pr-3 py-2 group"
-                                style={{ backgroundColor: 'var(--bg-card)' }}
-                              >
-                                <span className="text-secondary text-xs">└</span>
-                                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                                <span className="text-sm flex-1" style={{ color: 'var(--text-1)' }}>{cat.name}</span>
-                                {cat.recurrence_type !== 'none' && <RecurrenceBadge type={cat.recurrence_type} />}
-                                <button
-                                  onClick={() => handleDeleteCategory(cat.id)}
-                                  className="text-xs hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                                  style={{ color: 'var(--text-3)' }}
-                                >✕</button>
-                              </div>
+                              editingId === cat.id ? (
+                                <InlineEditForm
+                                  key={cat.id}
+                                  cat={cat}
+                                  name={editName} onNameChange={setEditName}
+                                  color={editColor} onColorChange={setEditColor}
+                                  isIncome={editIsIncome} onIsIncomeChange={setEditIsIncome}
+                                  recurrenceType={editRecurrenceType} onRecurrenceTypeChange={setEditRecurrenceType}
+                                  saving={savingEdit}
+                                  onSave={() => handleSaveEdit(cat)}
+                                  onCancel={() => setEditingId(null)}
+                                  indent
+                                />
+                              ) : (
+                                <div
+                                  key={cat.id}
+                                  className="flex items-center gap-2.5 pl-8 pr-3 py-2 group"
+                                  style={{ backgroundColor: 'var(--bg-card)' }}
+                                >
+                                  <span className="text-secondary text-xs">└</span>
+                                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                                  <span className="text-sm flex-1" style={{ color: 'var(--text-1)' }}>{cat.name}</span>
+                                  {cat.recurrence_type !== 'none' && <RecurrenceBadge type={cat.recurrence_type} />}
+                                  <button
+                                    onClick={() => handleStartEdit(cat)}
+                                    className="text-xs opacity-0 group-hover:opacity-100 hover:text-purple-400 transition-colors"
+                                    style={{ color: 'var(--text-3)' }}
+                                  >✎</button>
+                                  <button
+                                    onClick={() => handleDeleteCategory(cat.id)}
+                                    className="text-xs opacity-0 group-hover:opacity-100 hover:text-red-400 transition-colors"
+                                    style={{ color: 'var(--text-3)' }}
+                                  >✕</button>
+                                </div>
+                              )
                             ))}
                             {children.length === 0 && (
                               <p className="pl-8 py-2 text-xs italic" style={{ color: 'var(--text-3)', backgroundColor: 'var(--bg-card)' }}>
@@ -495,6 +560,78 @@ function RecurrenceBadge({ type }: { type: string }) {
     >
       {info.label}
     </span>
+  )
+}
+
+function InlineEditForm({ cat, name, onNameChange, color, onColorChange, isIncome, onIsIncomeChange, recurrenceType, onRecurrenceTypeChange, saving, onSave, onCancel, indent }: {
+  cat: Category
+  name: string; onNameChange: (v: string) => void
+  color: string; onColorChange: (v: string) => void
+  isIncome: boolean; onIsIncomeChange: (v: boolean) => void
+  recurrenceType: 'none' | 'one_time' | 'monthly' | 'weekly'; onRecurrenceTypeChange: (v: 'none' | 'one_time' | 'monthly' | 'weekly') => void
+  saving: boolean
+  onSave: () => void
+  onCancel: () => void
+  indent?: boolean
+}) {
+  const isMain = !cat.parent_id
+  return (
+    <div className={`p-3 space-y-2 ${indent ? 'pl-8' : ''}`} style={{ backgroundColor: 'var(--bg-muted)', borderLeft: `4px solid ${color}` }}>
+      <div className="flex gap-2">
+        <input
+          className="input flex-1 text-sm"
+          value={name}
+          onChange={e => onNameChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel() }}
+          autoFocus
+        />
+        <input
+          type="color"
+          value={color}
+          onChange={e => onColorChange(e.target.value)}
+          className="w-10 h-10 rounded-xl border cursor-pointer p-1 flex-shrink-0"
+          style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}
+        />
+      </div>
+      {isMain && (
+        <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+          <button
+            onClick={() => onIsIncomeChange(false)}
+            className={`flex-1 py-1.5 text-xs font-semibold transition-colors ${!isIncome ? 'bg-red-500/20 text-red-400' : 'text-secondary'}`}
+            style={isIncome ? { backgroundColor: 'var(--bg-input)' } : {}}
+          >📉 Expense</button>
+          <button
+            onClick={() => onIsIncomeChange(true)}
+            className={`flex-1 py-1.5 text-xs font-semibold transition-colors ${isIncome ? 'bg-green-500/20 text-green-400' : 'text-secondary'}`}
+            style={!isIncome ? { backgroundColor: 'var(--bg-input)' } : {}}
+          >📈 Income</button>
+        </div>
+      )}
+      {!isMain && (
+        <div className="grid grid-cols-4 gap-1">
+          {(['none', 'one_time', 'monthly', 'weekly'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => onRecurrenceTypeChange(t)}
+              className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                recurrenceType === t ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'border-transparent text-secondary'
+              }`}
+              style={recurrenceType !== t ? { backgroundColor: 'var(--bg-input)' } : {}}
+            >
+              {t === 'none' ? '—' : t === 'one_time' ? '1×' : t === 'monthly' ? '🔁Mo' : '🔁Wk'}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <button onClick={onSave} disabled={saving} className="btn-primary flex-1 text-xs py-2">
+          {saving ? 'Saving…' : '✓ Save'}
+        </button>
+        <button onClick={onCancel} className="flex-1 text-xs py-2 rounded-xl border text-secondary" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-input)' }}>
+          Cancel
+        </button>
+      </div>
+    </div>
   )
 }
 
