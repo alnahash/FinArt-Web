@@ -2,9 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme variables ──────────────────────────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg-app:     #1a1727;
+  --bg-surface: #1e1b2e;
+  --bg-card:    #252138;
+  --bg-input:   #2d2a3e;
+  --bg-muted:   rgba(45, 42, 62, 0.6);
+  --border:     rgba(71, 85, 105, 0.5);
+  --text-1:     #e2e8f0;
+  --text-2:     #94a3b8;
+  --text-3:     #64748b;
+}
+
+[data-theme="light"] {
+  --bg-app:     #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-card:    #ffffff;
+  --bg-input:   #f1f5f9;
+  --bg-muted:   rgba(241, 245, 249, 0.8);
+  --border:     #e2e8f0;
+  --text-1:     #1e293b;
+  --text-2:     #475569;
+  --text-3:     #94a3b8;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-50 antialiased;
+    background-color: var(--bg-app);
+    color: var(--text-1);
+    @apply antialiased;
   }
   * {
     scrollbar-width: thin;
@@ -15,23 +43,36 @@
   *::-webkit-scrollbar-thumb { @apply bg-slate-700 rounded-full; }
 }
 
+/* ── Components ───────────────────────────────────────────────────────────── */
 @layer components {
   .card {
-    @apply bg-slate-800 rounded-2xl p-4;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    @apply rounded-2xl p-4;
   }
   .btn-primary {
     @apply bg-indigo-500 hover:bg-indigo-400 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-ghost {
-    @apply text-slate-400 hover:text-slate-200 hover:bg-slate-700 py-2 px-3 rounded-xl transition-colors;
+    color: var(--text-2);
+    @apply hover:bg-slate-700/30 py-2 px-3 rounded-xl transition-colors;
   }
   .input {
-    @apply bg-slate-700 border border-slate-600 text-slate-50 placeholder-slate-400 rounded-xl px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    @apply placeholder-slate-400 rounded-xl px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition;
   }
-  .badge-debit {
-    @apply text-red-400 font-semibold;
-  }
-  .badge-credit {
-    @apply text-green-400 font-semibold;
-  }
+  .badge-debit  { @apply text-red-400 font-semibold; }
+  .badge-credit { @apply text-green-400 font-semibold; }
+
+  /* Theme-aware surface classes */
+  .bg-app     { background-color: var(--bg-app); }
+  .bg-surface { background-color: var(--bg-surface); }
+  .bg-card-t  { background-color: var(--bg-card); }
+  .bg-muted-t { background-color: var(--bg-muted); }
+  .border-t-color { border-color: var(--border); }
+  .text-primary   { color: var(--text-1); }
+  .text-secondary { color: var(--text-2); }
+  .text-muted     { color: var(--text-3); }
 }

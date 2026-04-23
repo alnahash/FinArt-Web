@@ -67,7 +67,7 @@ export default function DashboardPage() {
   const overBudget = monthlyBudget > 0 && totalDebit > monthlyBudget
 
   return (
-    <div className="bg-[#1a1727] min-h-full">
+    <div className="bg-app min-h-full">
 
       {/* Personal sub-header */}
       <div className="flex justify-end px-4 pt-3 pb-1">
@@ -97,7 +97,7 @@ export default function DashboardPage() {
 
         {/* Chart */}
         {!loading && monthlyData.length > 0 && (
-          <div className="rounded-xl overflow-hidden bg-[#2e2460]">
+          <div className="rounded-xl overflow-hidden bg-surface">
             <ExpenseChart data={monthlyData} avg={avg} />
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 import { getProfile, updateProfile, signOut, getCategories, createCategory, deleteCategory, buildCategoryTree } from '../services/db'
 import type { Profile, Category, CategoryGroup } from '../types'
 
@@ -22,6 +23,7 @@ const CURRENCIES = [
 export default function SettingsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { isDark, toggle: toggleTheme } = useTheme()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [tree, setTree] = useState<CategoryGroup[]>([])
   const [allCats, setAllCats] = useState<Category[]>([])
@@ -120,7 +122,7 @@ export default function SettingsPage() {
   )
 
   return (
-    <div className="pb-8">
+    <div className="pb-8 bg-app min-h-full">
 
       {/* ── Profile row ── */}
       <Section>
@@ -193,8 +195,12 @@ export default function SettingsPage() {
         </SettingRow>
       </Section>
 
-      {/* ── Privacy ── */}
+      {/* ── Appearance & Privacy ── */}
       <Section>
+        <SettingRow icon={isDark ? '☀️' : '🌙'} title="Theme Mode" subtitle={isDark ? 'Dark' : 'Light'}>
+          <Toggle value={isDark} onChange={toggleTheme} />
+        </SettingRow>
+
         <SettingRow icon="🙈" title="Hide Amounts" subtitle="Hide amounts while showing the app to others">
           <Toggle
             value={hideAmounts}
@@ -302,26 +308,24 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* ── Account actions ── */}
-      <Section>
+      {/* ── Sign Out ── */}
+      <div className="px-4 pb-8 pt-2">
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-4 py-4 text-red-400 hover:bg-red-500/10 transition-colors"
+          className="w-full py-4 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 font-bold text-base tracking-wide hover:bg-red-500/25 active:bg-red-500/35 transition-colors flex items-center justify-center gap-3"
         >
-          <span className="text-xl w-7 text-center">🚪</span>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-medium">Sign Out</p>
-          </div>
+          <span className="text-xl">🚪</span>
+          Sign Out
         </button>
-      </Section>
+      </div>
     </div>
   )
 }
 
 function Section({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-4 my-3 rounded-2xl overflow-hidden bg-slate-800/50 divide-y divide-slate-700/60">
-      {children}
+    <div className="mx-4 my-3 rounded-2xl overflow-hidden divide-y" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', border: '1px solid var(--border)' }}>
+      <div className="divide-y" style={{ borderColor: 'var(--border)' }}>{children}</div>
     </div>
   )
 }
