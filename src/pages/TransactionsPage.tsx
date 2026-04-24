@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { format, addMonths, subMonths, isSameMonth } from 'date-fns'
+import { format, addMonths, subMonths, isSameMonth, setDate } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { getTransactions, getCategories, insertTransaction, buildCategoryTree } from '../services/db'
@@ -40,6 +40,18 @@ export default function TransactionsPage() {
   const month = currentDate.getMonth() + 1
   const year = currentDate.getFullYear()
   const isCurrentMonth = isSameMonth(currentDate, new Date())
+
+  const currentDayOfMonth = currentDate.getDate()
+  let periodStartDate: Date
+  let periodEndDate: Date
+
+  if (currentDayOfMonth >= startDay) {
+    periodStartDate = setDate(currentDate, startDay)
+  } else {
+    periodStartDate = setDate(subMonths(currentDate, 1), startDay)
+  }
+
+  periodEndDate = setDate(addMonths(periodStartDate, 1), startDay - 1)
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current)
@@ -120,7 +132,7 @@ export default function TransactionsPage() {
         {/* Month selector */}
         <div className="flex items-center justify-between gap-2">
           <button className="btn-ghost" onClick={() => setCurrentDate(d => subMonths(d, 1))}>‹</button>
-          <span className="font-semibold text-slate-200 flex-1 text-center">{format(currentDate, 'MMMM yyyy')}</span>
+          <span className="font-semibold text-slate-200 flex-1 text-center">{format(periodStartDate, 'd MMMM yyyy')} - {format(periodEndDate, 'd MMMM yyyy')}</span>
           {!isCurrentMonth && (
             <button
               onClick={() => setCurrentDate(new Date())}
