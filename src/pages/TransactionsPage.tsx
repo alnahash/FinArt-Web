@@ -220,17 +220,19 @@ export default function TransactionsPage() {
 
       {/* Delete confirmation */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ pointerEvents: 'auto' }}>
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700" style={{ pointerEvents: 'auto' }}>
             <p className="text-lg font-semibold text-slate-100 mb-2">Delete {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}?</p>
             <p className="text-sm text-slate-400 mb-6">This action cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 text-slate-200 font-medium hover:bg-slate-600 transition-colors">
+                className="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 text-slate-200 font-medium hover:bg-slate-600 transition-colors"
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}>
                 Cancel
               </button>
               <button onClick={handleDeleteSelected}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-500/20 text-red-400 font-medium hover:bg-red-500/30 transition-colors">
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}>
                 Delete
               </button>
             </div>
