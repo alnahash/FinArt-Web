@@ -7,6 +7,8 @@ import type { Transaction, Category } from '../types'
 import TransactionCard from '../components/TransactionCard'
 import AddTransactionModal from '../components/AddTransactionModal'
 import TransactionDetailModal from '../components/TransactionDetailModal'
+import CategoryDropdown from '../components/CategoryDropdown'
+import { deleteTransaction } from '../services/db'
 
 const PAGE = 25
 
@@ -30,6 +32,8 @@ export default function TransactionsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const month = currentDate.getMonth() + 1
@@ -78,6 +82,27 @@ export default function TransactionsPage() {
     loadTxs(true)
   }
 
+  const toggleSelection = (id: string) => {
+    const newSet = new Set(selectedIds)
+    if (newSet.has(id)) newSet.delete(id)
+    else newSet.add(id)
+    setSelectedIds(newSet)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === txs.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(txs.map(t => t.id)))
+  }
+
+  const handleDeleteSelected = async () => {
+    for (const id of selectedIds) {
+      await deleteTransaction(id)
+    }
+    setSelectedIds(new Set())
+    setShowDeleteConfirm(false)
+    loadTxs(true)
+  }
+
   const subCats = categories.filter(c => c.parent_id !== null)
   const tree = buildCategoryTree(categories)
 
@@ -106,42 +131,45 @@ export default function TransactionsPage() {
         <input className="input" type="text" placeholder="Search merchant, bank…"
           value={search} onChange={e => setSearch(e.target.value)} />
 
-        {/* Filters row */}
-        <div className="flex gap-2 flex-wrap">
-          {(['all', 'debit', 'credit'] as const).map(t => (
-            <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
-                typeFilter === t
-                  ? t === 'debit' ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/40'
-                    : t === 'credit' ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
-                    : 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/40'
-                  : 'bg-slate-700 text-slate-400 hover:text-slate-200'
-              }`}>
-              {t === 'all' ? 'All' : t === 'debit' ? '↑ Debit' : '↓ Credit'}
+        {/* Filters row / Selection row */}
+        {selectedIds.size > 0 ? (
+          <div className="flex gap-2 items-center">
+            <input type="checkbox" checked={selectedIds.size === txs.length} onChange={toggleSelectAll}
+              className="w-4 h-4 cursor-pointer" />
+            <span className="text-sm text-slate-400">{selectedIds.size} selected</span>
+            <button onClick={() => setShowDeleteConfirm(true)}
+              className="ml-auto px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/30 transition-colors">
+              Delete
             </button>
-          ))}
-          <span className="ml-auto text-xs text-slate-500 self-center">{total} transactions</span>
-        </div>
+          </div>
+        ) : (
+          <div className="flex gap-2 flex-wrap">
+            {(['all', 'debit', 'credit'] as const).map(t => (
+              <button key={t} onClick={() => setTypeFilter(t)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
+                  typeFilter === t
+                    ? t === 'debit' ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/40'
+                      : t === 'credit' ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
+                      : 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/40'
+                    : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+                }`}>
+                {t === 'all' ? 'All' : t === 'debit' ? '↑ Debit' : '↓ Credit'}
+              </button>
+            ))}
+            <span className="ml-auto text-xs text-slate-500 self-center">{total} transactions</span>
+          </div>
+        )}
 
         {/* Category filter */}
-        <select
-          className="input text-sm"
+        <CategoryDropdown
           value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
-        >
-          <option value="">All categories</option>
-          {tree.map(({ group, children }) =>
-            children.length > 0 ? (
-              <optgroup key={group.id} label={group.name}>
-                {children.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </optgroup>
-            ) : null
-          )}
-        </select>
+          onChange={setCategoryFilter}
+          tree={tree}
+        />
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto overflow-x-hidden">
         {loading ? (
           <div className="p-4 space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -158,7 +186,10 @@ export default function TransactionsPage() {
           <div className="divide-y divide-slate-800">
             {txs.map(tx => (
               <TransactionCard key={tx.id} tx={tx} currency={currency} hideAmounts={hideAmounts}
-                onClick={() => setSelectedTx(tx)} />
+                onClick={() => !showCheckbox && setSelectedTx(tx)}
+                showCheckbox={selectedIds.size > 0}
+                isSelected={selectedIds.has(tx.id)}
+                onToggleSelect={() => toggleSelection(tx.id)} />
             ))}
             {txs.length < total && (
               <div className="p-4 text-center">
@@ -185,6 +216,26 @@ export default function TransactionsPage() {
         <TransactionDetailModal tx={selectedTx} categories={categories}
           currency={currency} hideAmounts={hideAmounts}
           onClose={() => setSelectedTx(null)} onUpdated={() => loadTxs(true)} />
+      )}
+
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700">
+            <p className="text-lg font-semibold text-slate-100 mb-2">Delete {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}?</p>
+            <p className="text-sm text-slate-400 mb-6">This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 text-slate-200 font-medium hover:bg-slate-600 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleDeleteSelected}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-500/20 text-red-400 font-medium hover:bg-red-500/30 transition-colors">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

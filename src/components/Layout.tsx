@@ -13,7 +13,7 @@ export default function Layout() {
   const { isDark, toggle } = useTheme()
 
   return (
-    <div className="flex flex-col min-h-screen max-w-2xl mx-auto">
+    <div className="flex flex-col min-h-screen">
       {/* Top bar */}
       <header className="sticky top-0 z-10 bg-[#6941C6] px-4 py-3 flex items-center gap-2">
         <button className="text-white/80 text-xl mr-1" onClick={() => navigate('/settings')}>≡</button>
@@ -35,7 +35,7 @@ export default function Layout() {
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-10 border-t" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
-        <div className="max-w-2xl mx-auto flex">
+        <div className="flex">
           {NAV.map(n => (
             <NavLink
               key={n.to}

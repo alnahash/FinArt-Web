@@ -20,9 +20,12 @@ interface Props {
   currency?: string
   hideAmounts?: boolean
   onClick?: () => void
+  isSelected?: boolean
+  onToggleSelect?: () => void
+  showCheckbox?: boolean
 }
 
-export default function TransactionCard({ tx, currency = 'BHD', hideAmounts = false, onClick }: Props) {
+export default function TransactionCard({ tx, currency = 'BHD', hideAmounts = false, onClick, isSelected = false, onToggleSelect, showCheckbox = false }: Props) {
   const emoji = tx.category ? (tx.category.icon || (CATEGORY_EMOJI[tx.category.name] ?? '💬')) : '💬'
   const color = tx.category?.color ?? '#6366f1'
   const title = tx.merchant || tx.bank_name || 'Transaction'
@@ -32,8 +35,13 @@ export default function TransactionCard({ tx, currency = 'BHD', hideAmounts = fa
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/50 transition-colors text-left"
+      className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/50 transition-colors text-left ${isSelected ? 'bg-indigo-500/10' : ''}`}
     >
+      {showCheckbox && (
+        <input type="checkbox" checked={isSelected} onChange={onToggleSelect}
+          onClick={e => e.stopPropagation()}
+          className="w-4 h-4 cursor-pointer flex-shrink-0" />
+      )}
       <div
         className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
         style={{ backgroundColor: color + '33', border: `1.5px solid ${color}55` }}
