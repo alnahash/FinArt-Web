@@ -35,10 +35,10 @@ export default function CategoryDropdown({ value, onChange, tree }: Props) {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto overflow-x-hidden">
           <button
             onClick={() => { onChange(''); setOpen(false) }}
-            className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 transition-colors"
+            className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 transition-colors truncate"
           >
             All categories
           </button>
@@ -46,12 +46,12 @@ export default function CategoryDropdown({ value, onChange, tree }: Props) {
           {tree.map(group => (
             group.children.length > 0 ? (
               <div key={group.group.id}>
-                <div className="px-4 py-2 text-xs font-semibold text-slate-400 bg-slate-900/50">{group.group.name}</div>
+                <div className="px-4 py-2 text-xs font-semibold text-slate-400 bg-slate-900/50 truncate">{group.group.name}</div>
                 {group.children.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => { onChange(cat.id); setOpen(false) }}
-                    className={`w-full text-left px-6 py-2 text-sm transition-colors ${
+                    className={`w-full text-left px-6 py-2 text-sm transition-colors truncate ${
                       value === cat.id
                         ? 'bg-indigo-500/20 text-indigo-300'
                         : 'text-slate-200 hover:bg-slate-700/30'
