@@ -129,7 +129,15 @@ export default function SettingsPage() {
     const updates: Parameters<typeof updateCategory>[1] = { name: editName.trim() || cat.name, color: editColor }
     if (!cat.parent_id) updates.is_income = editIsIncome
     updates.recurrence_type = editRecurrenceType
-    await updateCategory(cat.id, updates)
+    console.log('[SettingsPage] Saving category:', cat.id, updates)
+    const { error } = await updateCategory(cat.id, updates)
+    if (error) {
+      console.error('[SettingsPage] Save failed:', error)
+      alert(`Save failed: ${error.message}`)
+      setSavingEdit(false)
+      return
+    }
+    console.log('[SettingsPage] Save succeeded')
     setEditingId(null)
     setSavingEdit(false)
     await loadCategories()
