@@ -574,6 +574,17 @@ export default function SettingsPage() {
         <SettingRow icon="ℹ️" title="FinArt Web" subtitle={`Connected to Supabase · ${allCats.length} categories`} />
       </Section>
 
+      {/* ── Data Management ── */}
+      <div className="px-4 py-3">
+        <button
+          onClick={() => navigate('/import')}
+          className="w-full py-4 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 font-bold text-base tracking-wide hover:bg-purple-500/25 active:bg-purple-500/35 transition-colors flex items-center justify-center gap-3"
+        >
+          <span className="text-xl">📥</span>
+          Import CSV
+        </button>
+      </div>
+
       {saving && (
         <div className="px-4">
           <div className="btn-primary w-full text-center py-3 text-sm opacity-60">Saving…</div>
