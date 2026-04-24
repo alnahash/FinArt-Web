@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { format, subMonths } from 'date-fns'
+import { format, subMonths, setDate, addMonths } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { getMonthlySummary, getTransactions, getCategories, insertTransaction, getMonthlyTotals } from '../services/db'
@@ -21,8 +21,21 @@ export default function DashboardPage() {
   const navigate = useNavigate()
 
   const [currentDate] = useState(new Date())
-  const month = currentDate.getMonth() + 1
-  const year = currentDate.getFullYear()
+
+  const currentDayOfMonth = currentDate.getDate()
+  let periodStartDate: Date
+  let periodEndDate: Date
+
+  if (currentDayOfMonth >= startDay) {
+    periodStartDate = setDate(currentDate, startDay)
+  } else {
+    periodStartDate = setDate(subMonths(currentDate, 1), startDay)
+  }
+
+  periodEndDate = setDate(addMonths(periodStartDate, 1), startDay - 1)
+
+  const month = periodStartDate.getMonth() + 1
+  const year = periodStartDate.getFullYear()
 
   const [summary, setSummary] = useState({ totalDebit: 0, totalCredit: 0, netSavings: 0 })
   const [recentTxs, setRecentTxs] = useState<Transaction[]>([])
@@ -33,7 +46,7 @@ export default function DashboardPage() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
 
   const periods = Array.from({ length: 6 }, (_, i) => {
-    const d = subMonths(currentDate, 5 - i)
+    const d = subMonths(periodStartDate, 5 - i)
     return { month: d.getMonth() + 1, year: d.getFullYear() }
   })
 
@@ -94,7 +107,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex justify-between text-slate-400 text-xs mt-0.5 mb-2">
-          <span>{format(currentDate, 'MMMM-yyyy')}</span>
+          <span>{format(periodStartDate, 'd MMMM yyyy')} - {format(periodEndDate, 'd MMMM yyyy')}</span>
           {avg > 0 && <span>of monthly avg</span>}
         </div>
 
