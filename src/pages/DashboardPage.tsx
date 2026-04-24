@@ -85,11 +85,15 @@ export default function DashboardPage() {
     const prevCatMap: { [key: string]: number } = {}
 
     catSpendRes?.forEach((cs: any) => {
-      catMap[cs.category_id || 'uncategorized'] = cs.debit || 0
+      if (!cs.isIncome) {
+        catMap[cs.category.id] = cs.spent || 0
+      }
     })
 
     prevCatSpendRes?.forEach((cs: any) => {
-      prevCatMap[cs.category_id || 'uncategorized'] = cs.debit || 0
+      if (!cs.isIncome) {
+        prevCatMap[cs.category.id] = cs.spent || 0
+      }
     })
 
     setCategorySpending(catMap)
@@ -117,11 +121,12 @@ export default function DashboardPage() {
 
   // Get top 3 categories
   const topCategories = Object.entries(categorySpending)
+    .filter(([_, amount]) => amount > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([catId, amount]) => {
       const cat = categories.find(c => c.id === catId)
-      return { name: cat?.name || 'Other', amount }
+      return { name: cat?.name || 'Other', amount, catId }
     })
 
   // Calculate category changes
