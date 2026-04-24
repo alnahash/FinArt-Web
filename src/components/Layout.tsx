@@ -20,10 +20,12 @@ export default function Layout() {
         <span className="font-bold text-xl text-white tracking-tight flex-1">FinArt</span>
         <button
           onClick={toggle}
-          className="text-white/80 text-lg px-1"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium"
           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {isDark ? '☀️' : '🌙'}
+          <span className={isDark ? 'text-white/40' : 'text-white'}>☀️</span>
+          <div className={`w-8 h-4 rounded-full transition-colors ${isDark ? 'bg-slate-500' : 'bg-yellow-400'}`} />
+          <span className={isDark ? 'text-white' : 'text-white/40'}>🌙</span>
         </button>
         <button className="text-white/80 text-xl px-1" onClick={() => navigate('/transactions')}>🔍</button>
       </header>
