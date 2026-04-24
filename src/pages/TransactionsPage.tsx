@@ -185,7 +185,7 @@ export default function TransactionsPage() {
         ) : (
           <div className="divide-y divide-slate-800">
             {txs.map(tx => (
-              <TransactionCard key={tx.id} tx={tx} currency={currency} hideAmounts={hideAmounts}
+              <TransactionCard key={tx.id} tx={tx} categories={categories} currency={currency} hideAmounts={hideAmounts}
                 onClick={() => selectedIds.size === 0 && setSelectedTx(tx)}
                 showCheckbox={selectedIds.size > 0}
                 isSelected={selectedIds.has(tx.id)}

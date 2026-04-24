@@ -1,22 +1,10 @@
 import { format } from 'date-fns'
-import type { Transaction } from '../types'
+import type { Transaction, Category } from '../types'
 import { fmt } from '../lib/currency'
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  'INCOME': '💰', 'FIXED BILLS': '📋', 'ANNUAL': '📅', 'FAMILY': '👨‍👩‍👧‍👦',
-  'FOOD': '🍽️', 'TRANSPORT': '🚗', 'LIFESTYLE': '✨', 'FINANCIAL': '💳',
-  'Salary': '💰', 'Rental income': '🏠', 'Other income': '💵',
-  'Telecom': '📱', 'Utilities': '💡', 'House help': '🏡', 'Monthly subscriptions': '📦',
-  'Insurance': '🛡️', 'Annual subscriptions': '🔄', 'Government fees': '🏛️',
-  'School fees': '🏫', 'Gifts & occasions': '🎁',
-  'Groceries': '🛒', 'Dining out': '🍽️', 'Coffee shop': '☕',
-  'Fuel': '⛽', 'Car service': '🔧', 'Health': '🏥',
-  'Shopping': '🛍️', 'SPA & wellness': '💆', 'Travel': '✈️',
-  'Savings transfer': '🏦', 'Investment': '📈',
-}
 
 interface Props {
   tx: Transaction
+  categories?: Category[]
   currency?: string
   hideAmounts?: boolean
   onClick?: () => void
@@ -25,12 +13,24 @@ interface Props {
   showCheckbox?: boolean
 }
 
-export default function TransactionCard({ tx, currency = 'BHD', hideAmounts = false, onClick, isSelected = false, onToggleSelect, showCheckbox = false }: Props) {
-  const emoji = tx.category ? (tx.category.icon || (CATEGORY_EMOJI[tx.category.name] ?? '💬')) : '💬'
-  const color = tx.category?.color ?? '#6366f1'
-  const title = tx.merchant || tx.bank_name || 'Transaction'
-  const sub = tx.category?.name ?? (tx.account_number ? `A/C ${tx.account_number}` : 'Uncategorised')
+export default function TransactionCard({ tx, categories = [], currency = 'BHD', hideAmounts = false, onClick, isSelected = false, onToggleSelect, showCheckbox = false }: Props) {
+  const description = tx.description || tx.merchant || 'Transaction'
   const amountStr = hideAmounts ? '••••' : fmt(tx.amount, currency)
+
+  let categoryName = 'Uncategorised'
+  let subCategoryName = ''
+
+  if (tx.category) {
+    if (tx.category.parent_id) {
+      subCategoryName = tx.category.name
+      const parent = categories.find(c => c.id === tx.category!.parent_id)
+      categoryName = parent?.name || 'Other'
+    } else {
+      categoryName = tx.category.name
+    }
+  }
+
+  const dateTimeStr = format(new Date(tx.transaction_date), 'dd MMM HH:mm')
 
   return (
     <button
@@ -42,23 +42,20 @@ export default function TransactionCard({ tx, currency = 'BHD', hideAmounts = fa
           onClick={e => e.stopPropagation()}
           className="w-4 h-4 cursor-pointer flex-shrink-0" />
       )}
-      <div
-        className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-        style={{ backgroundColor: color + '33', border: `1.5px solid ${color}55` }}
-      >
-        {emoji}
-      </div>
+
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-100 truncate">{title}</p>
-        <p className="text-xs text-slate-400 truncate">{sub}</p>
+        <p className="text-sm font-medium text-slate-100 truncate">{description}</p>
+        <div className="text-xs text-slate-400 flex gap-2">
+          <span>{categoryName}</span>
+          {subCategoryName && <span>• {subCategoryName}</span>}
+        </div>
       </div>
+
       <div className="text-right flex-shrink-0">
         <p className={`text-sm font-semibold ${tx.type === 'debit' ? 'text-red-400' : 'text-green-400'}`}>
           {tx.type === 'debit' ? '−' : '+'}{amountStr}
         </p>
-        <p className="text-xs text-slate-500">
-          {format(new Date(tx.transaction_date), 'd MMM')}
-        </p>
+        <p className="text-xs text-slate-500">{dateTimeStr}</p>
       </div>
     </button>
   )
