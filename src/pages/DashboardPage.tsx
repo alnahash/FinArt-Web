@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { format, subMonths, setDate, addMonths } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
-import { getMonthlySummary, getTransactions, getCategories, insertTransaction, getMonthlyTotals } from '../services/db'
+import { getMonthlySummary, getTransactions, getCategories, insertTransaction, getMonthlyTotals, getCategorySpending } from '../services/db'
 import { fmt as fmtCurrency } from '../lib/currency'
 import type { Transaction, Category } from '../types'
 import TransactionCard from '../components/TransactionCard'
@@ -38,9 +38,12 @@ export default function DashboardPage() {
   const year = periodStartDate.getFullYear()
 
   const [summary, setSummary] = useState({ totalDebit: 0, totalCredit: 0, netSavings: 0 })
+  const [prevSummary, setPrevSummary] = useState({ totalDebit: 0, totalCredit: 0, netSavings: 0 })
   const [recentTxs, setRecentTxs] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [monthlyData, setMonthlyData] = useState<{ month: number; year: number; debit: number }[]>([])
+  const [categorySpending, setCategorySpending] = useState<{ [key: string]: number }>({})
+  const [prevCategorySpending, setPrevCategorySpending] = useState<{ [key: string]: number }>({})
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
@@ -59,12 +62,41 @@ export default function DashboardPage() {
       getTransactions(user.id, { month, year }, 5, 0, startDay),
       getMonthlyTotals(user.id, periods, startDay),
     ])
+
+    const allCategories = catsRes.data ?? []
     setSummary(sumRes)
-    setCategories(catsRes.data ?? [])
+    setCategories(allCategories)
     setRecentTxs(txsRes.data as Transaction[] ?? [])
     setMonthlyData(monthlyRes.map(r => ({ month: r.month, year: r.year, debit: r.debit })))
+
+    // Fetch category spending and previous month data
+    const prevMonthStart = subMonths(periodStartDate, 1)
+    const prevMonth = prevMonthStart.getMonth() + 1
+    const prevYear = prevMonthStart.getFullYear()
+
+    const [catSpendRes, prevSumRes, prevCatSpendRes] = await Promise.all([
+      getCategorySpending(user.id, month, year, allCategories, startDay),
+      getMonthlySummary(user.id, prevMonth, prevYear, startDay),
+      getCategorySpending(user.id, prevMonth, prevYear, allCategories, startDay),
+    ])
+
+    // Convert category spending to object for easier lookup
+    const catMap: { [key: string]: number } = {}
+    const prevCatMap: { [key: string]: number } = {}
+
+    catSpendRes?.forEach((cs: any) => {
+      catMap[cs.category_id || 'uncategorized'] = cs.debit || 0
+    })
+
+    prevCatSpendRes?.forEach((cs: any) => {
+      prevCatMap[cs.category_id || 'uncategorized'] = cs.debit || 0
+    })
+
+    setCategorySpending(catMap)
+    setPrevCategorySpending(prevCatMap)
+    setPrevSummary(prevSumRes)
     setLoading(false)
-  }, [user, month, year, startDay])
+  }, [user, month, year, startDay, periodStartDate])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -82,6 +114,35 @@ export default function DashboardPage() {
   const overBudget = monthlyBudget > 0 && summary.totalDebit > monthlyBudget
 
   const mask = (val: number) => hideAmounts ? '••••' : fmtCurrency(val, currency)
+
+  // Get top 3 categories
+  const topCategories = Object.entries(categorySpending)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([catId, amount]) => {
+      const cat = categories.find(c => c.id === catId)
+      return { name: cat?.name || 'Other', amount }
+    })
+
+  // Calculate category changes
+  const categoryChanges = Object.entries(categorySpending)
+    .map(([catId, current]) => {
+      const prev = prevCategorySpending[catId] || 0
+      const change = current - prev
+      const cat = categories.find(c => c.id === catId)
+      return { name: cat?.name || 'Other', current, prev, change }
+    })
+    .filter(c => c.change !== 0)
+    .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+    .slice(0, 3)
+
+  // Calculate savings rate
+  const savingsRate = summary.totalCredit > 0 ? Math.round((summary.netSavings / summary.totalCredit) * 100) : 0
+  const prevSavingsRate = prevSummary.totalCredit > 0 ? Math.round((prevSummary.netSavings / prevSummary.totalCredit) * 100) : 0
+
+  // Calculate spending trend
+  const spendingChange = summary.totalDebit - prevSummary.totalDebit
+  const spendingChangePercent = prevSummary.totalDebit > 0 ? Math.round((spendingChange / prevSummary.totalDebit) * 100) : 0
 
   return (
     <div className="bg-app min-h-full">
@@ -139,6 +200,101 @@ export default function DashboardPage() {
         className="mx-4 mb-6 text-purple-400 text-xs font-bold tracking-[0.15em] uppercase">
         VIEW DETAILS
       </button>
+
+      {/* Analysis */}
+      {!loading && (
+        <div className="px-4 mb-6">
+          <p className="text-slate-200 text-base font-light mb-4">Insights</p>
+
+          {/* Income vs Expenses */}
+          <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+            <p className="text-slate-400 text-xs font-medium mb-3">INCOME vs EXPENSES</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-slate-500 text-xs mb-1">Total Income</p>
+                <p className="text-green-400 text-lg font-semibold">{mask(summary.totalCredit)}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs mb-1">Total Expenses</p>
+                <p className="text-red-400 text-lg font-semibold">{mask(summary.totalDebit)}</p>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-slate-700">
+              <p className="text-slate-500 text-xs mb-1">Savings Rate</p>
+              <p className={`text-base font-semibold ${savingsRate >= 0 ? 'text-indigo-400' : 'text-red-400'}`}>
+                {savingsRate}% {prevSavingsRate !== savingsRate && (
+                  <span className={`text-xs ml-2 ${savingsRate > prevSavingsRate ? 'text-green-400' : 'text-red-400'}`}>
+                    {savingsRate > prevSavingsRate ? '↑' : '↓'} {Math.abs(savingsRate - prevSavingsRate)}%
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Top Categories */}
+          {topCategories.length > 0 && (
+            <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+              <p className="text-slate-400 text-xs font-medium mb-3">TOP EXPENSE CATEGORIES</p>
+              <p className="text-slate-300 text-sm mb-3">
+                Most of your expenses are{' '}
+                <span className="text-white font-semibold">{topCategories.map((c, i) => (
+                  <span key={c.name}>
+                    {c.name} ({mask(c.amount)}){i < topCategories.length - 1 ? ', ' : ''}
+                  </span>
+                ))}</span>
+              </p>
+            </div>
+          )}
+
+          {/* Month-over-Month Changes */}
+          {spendingChange !== 0 && (
+            <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+              <p className="text-slate-400 text-xs font-medium mb-3">COMPARED TO LAST MONTH</p>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 text-sm">Overall Spending</span>
+                  <span className={`text-sm font-semibold ${spendingChange > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    {spendingChange > 0 ? '+' : '−'}{mask(Math.abs(spendingChange))} ({spendingChangePercent > 0 ? '+' : ''}{spendingChangePercent}%)
+                  </span>
+                </div>
+                {categoryChanges.map((change) => (
+                  <div key={change.name} className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">{change.name}</span>
+                    <span className={change.change > 0 ? 'text-red-400' : 'text-green-400'}>
+                      {change.change > 0 ? '+' : '−'}{mask(Math.abs(change.change))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Additional Insights */}
+          <div className="bg-surface rounded-xl p-4 border border-slate-700">
+            <p className="text-slate-400 text-xs font-medium mb-3">KEY METRICS</p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Daily Average Spending</span>
+                <span className="text-slate-300 font-semibold">{mask(summary.totalDebit / 30)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">vs Monthly Average</span>
+                <span className={`font-semibold ${summary.totalDebit <= avg ? 'text-green-400' : 'text-orange-400'}`}>
+                  {summary.totalDebit <= avg ? '✓ Under' : '⚠ Over'} by {mask(Math.abs(summary.totalDebit - avg))}
+                </span>
+              </div>
+              {monthlyBudget > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Budget Status</span>
+                  <span className={`font-semibold ${!overBudget ? 'text-green-400' : 'text-red-400'}`}>
+                    {overBudget ? `⚠ Over by ${mask(summary.totalDebit - monthlyBudget)}` : `✓ On track (${budgetPct.toFixed(0)}%)`}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Budgets */}
       <div className="px-4 mb-2">
