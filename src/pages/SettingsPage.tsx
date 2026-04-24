@@ -128,7 +128,7 @@ export default function SettingsPage() {
     setSavingEdit(true)
     const updates: Parameters<typeof updateCategory>[1] = { name: editName.trim() || cat.name, color: editColor }
     if (!cat.parent_id) updates.is_income = editIsIncome
-    else updates.recurrence_type = editRecurrenceType
+    updates.recurrence_type = editRecurrenceType
     await updateCategory(cat.id, updates)
     setEditingId(null)
     setSavingEdit(false)
@@ -689,4 +689,3 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
     </button>
   )
 }
-  
