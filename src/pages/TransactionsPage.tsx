@@ -34,6 +34,7 @@ export default function TransactionsPage() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const month = currentDate.getMonth() + 1
@@ -95,12 +96,18 @@ export default function TransactionsPage() {
   }
 
   const handleDeleteSelected = async () => {
-    for (const id of selectedIds) {
-      await deleteTransaction(id)
+    setIsDeleting(true)
+    try {
+      const ids = Array.from(selectedIds)
+      for (let i = 0; i < ids.length; i++) {
+        await deleteTransaction(ids[i])
+      }
+      setSelectedIds(new Set())
+      setShowDeleteConfirm(false)
+      loadTxs(true)
+    } finally {
+      setIsDeleting(false)
     }
-    setSelectedIds(new Set())
-    setShowDeleteConfirm(false)
-    loadTxs(true)
   }
 
   const subCats = categories.filter(c => c.parent_id !== null)
@@ -222,20 +229,32 @@ export default function TransactionsPage() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ pointerEvents: 'auto' }}>
           <div className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700" style={{ pointerEvents: 'auto' }}>
-            <p className="text-lg font-semibold text-slate-100 mb-2">Delete {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}?</p>
-            <p className="text-sm text-slate-400 mb-6">This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 text-slate-200 font-medium hover:bg-slate-600 transition-colors"
-                style={{ pointerEvents: 'auto', cursor: 'pointer' }}>
-                Cancel
-              </button>
-              <button onClick={handleDeleteSelected}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
-                style={{ pointerEvents: 'auto', cursor: 'pointer' }}>
-                Delete
-              </button>
-            </div>
+            {isDeleting ? (
+              <>
+                <p className="text-lg font-semibold text-slate-100 mb-2">Deleting transactions...</p>
+                <div className="w-full bg-slate-700 rounded-full h-2 mb-4 overflow-hidden">
+                  <div className="bg-red-500 h-full animate-pulse" style={{ width: '100%' }} />
+                </div>
+                <p className="text-sm text-slate-400 text-center">Please wait, deleting {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}...</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-semibold text-slate-100 mb-2">Delete {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}?</p>
+                <p className="text-sm text-slate-400 mb-6">This action cannot be undone.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 text-slate-200 font-medium hover:bg-slate-600 transition-colors"
+                    style={{ pointerEvents: 'auto', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button onClick={handleDeleteSelected}
+                    className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+                    style={{ pointerEvents: 'auto', cursor: 'pointer' }}>
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
