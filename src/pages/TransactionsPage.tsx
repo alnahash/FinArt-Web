@@ -37,10 +37,6 @@ export default function TransactionsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const month = currentDate.getMonth() + 1
-  const year = currentDate.getFullYear()
-  const isCurrentMonth = isSameMonth(currentDate, new Date())
-
   const currentDayOfMonth = currentDate.getDate()
   let periodStartDate: Date
   let periodEndDate: Date
@@ -52,6 +48,10 @@ export default function TransactionsPage() {
   }
 
   periodEndDate = setDate(addMonths(periodStartDate, 1), startDay - 1)
+
+  const month = periodStartDate.getMonth() + 1
+  const year = periodStartDate.getFullYear()
+  const isCurrentMonth = isSameMonth(currentDate, new Date())
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current)
