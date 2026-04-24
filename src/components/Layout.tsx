@@ -30,7 +30,9 @@ export default function Layout() {
 
       {/* Page content */}
       <main className="flex-1 overflow-auto pb-20 bg-app">
-        <Outlet />
+        <div className="overflow-hidden h-full">
+          <Outlet />
+        </div>
       </main>
 
       {/* Bottom nav */}

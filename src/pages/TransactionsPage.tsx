@@ -169,7 +169,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-auto overflow-x-hidden">
+      <div className="flex-1 overflow-auto overflow-x-hidden overflow-y-auto">
         {loading ? (
           <div className="p-4 space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (
