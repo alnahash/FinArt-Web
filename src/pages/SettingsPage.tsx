@@ -649,22 +649,20 @@ function InlineEditForm({ cat, name, onNameChange, color, onColorChange, isIncom
           >📈 Income</button>
         </div>
       )}
-      {!isMain && (
-        <div className="grid grid-cols-5 gap-1">
-          {(['none', 'one_time', 'weekly', 'monthly', 'yearly'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => onRecurrenceTypeChange(t)}
-              className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                recurrenceType === t ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'border-transparent text-secondary'
-              }`}
-              style={recurrenceType !== t ? { backgroundColor: 'var(--bg-input)' } : {}}
-            >
-              {t === 'none' ? '—' : t === 'one_time' ? '1×' : t === 'weekly' ? '🔁Wk' : t === 'monthly' ? '🔁Mo' : '📅Yr'}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-5 gap-1">
+        {(['none', 'one_time', 'weekly', 'monthly', 'yearly'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => onRecurrenceTypeChange(t)}
+            className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              recurrenceType === t ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'border-transparent text-secondary'
+            }`}
+            style={recurrenceType !== t ? { backgroundColor: 'var(--bg-input)' } : {}}
+          >
+            {t === 'none' ? '—' : t === 'one_time' ? '1×' : t === 'weekly' ? '🔁Wk' : t === 'monthly' ? '🔁Mo' : '📅Yr'}
+          </button>
+        ))}
+      </div>
       <div className="flex gap-2">
         <button onClick={onSave} disabled={saving} className="btn-primary flex-1 text-xs py-2">
           {saving ? 'Saving…' : '✓ Save'}
