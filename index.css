@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MALIA DESIGN SYSTEM
+   Editorial private-banking aesthetic
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root, [data-theme="dark"] {
+  /* Background layers */
+  --bg-app:     #14110F;
+  --bg-surface: #1C1815;
+  --bg-card:    #211C18;
+  --bg-input:   #211C18;
+  --bg-muted:   rgba(28, 24, 21, 0.6);
+  
+  /* Borders */
+  --border:     rgba(212, 165, 116, 0.12);
+  --border-strong: rgba(212, 165, 116, 0.22);
+  
+  /* Text hierarchy */
+  --text-1:     #F0E8DB;
+  --text-2:     #9A8E7D;
+  --text-3:     #5F564C;
+  
+  /* Brand colors */
+  --brass:      #D4A574;
+  --brass-soft: #8B6F4E;
+  --sage:       #8FA87C;
+  --clay:       #C9583F;
+  --linen:      #E8E0D1;
+}
+
+[data-theme="light"] {
+  --bg-app:     #F5F1E8;
+  --bg-surface: #FFFFFF;
+  --bg-card:    #FDFCFA;
+  --bg-input:   #FFFFFF;
+  --bg-muted:   rgba(255, 255, 255, 0.8);
+  --border:     rgba(95, 86, 76, 0.15);
+  --border-strong: rgba(95, 86, 76, 0.25);
+  --text-1:     #1A1A1A;
+  --text-2:     #5F564C;
+  --text-3:     #9A8E7D;
+  --brass:      #8B6F4E;
+  --brass-soft: #A68968;
+  --sage:       #6B8659;
+  --clay:       #A0432F;
+  --linen:      #3A3632;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+@layer base {
+  body {
+    background-color: var(--bg-app);
+    color: var(--text-1);
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "ss01", "cv11";
+    @apply antialiased;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--brass-soft) transparent;
+  }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: var(--brass-soft); border-radius: 3px; }
+}
+
+/* ── Typography ───────────────────────────────────────────────────────────── */
+@layer base {
+  .display {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 300;
+    font-variation-settings: "opsz" 144;
+    letter-spacing: -0.02em;
+  }
+  .mono {
+    font-family: 'Geist Mono', 'SF Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── Components ───────────────────────────────────────────────────────────── */
+@layer components {
+  .card {
+    background-color: var(--bg-card);
+    border: 0.5px solid var(--border);
+    @apply rounded p-6;
+  }
+  
+  .btn-primary {
+    background: var(--brass);
+    color: var(--bg-app);
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    @apply py-3 px-5 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--linen);
+    color: var(--bg-app);
+  }
+  
+  .btn-ghost {
+    background: transparent;
+    border: 0.5px solid var(--border-strong);
+    color: var(--text-1);
+    font-weight: 500;
+    font-size: 13px;
+    @apply py-2.5 px-4 rounded transition-all;
+  }
+  .btn-ghost:hover {
+    background: var(--bg-card);
+    color: var(--brass);
+  }
+  
+  .input {
+    background-color: var(--bg-input);
+    border: 0.5px solid var(--border);
+    color: var(--text-1);
+    font-size: 14px;
+    @apply placeholder:text-[var(--text-3)] rounded px-4 py-3 w-full focus:outline-none focus:border-[var(--brass)] transition;
+  }
+  
+  .badge-debit  { color: var(--clay); font-family: 'Fraunces', serif; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .badge-credit { color: var(--sage); font-family: 'Fraunces', serif; font-weight: 400; font-variant-numeric: tabular-nums; }
+
+  /* Theme-aware surface classes */
+  .bg-app     { background-color: var(--bg-app); }
+  .bg-surface { background-color: var(--bg-surface); }
+  .bg-card-t  { background-color: var(--bg-card); }
+  .bg-muted-t { background-color: var(--bg-muted); }
+  .border-t-color { border-color: var(--border); }
+  .text-primary   { color: var(--text-1); }
+  .text-secondary { color: var(--text-2); }
+  .text-muted     { color: var(--text-3); }
+  .text-brass     { color: var(--brass); }
+  .text-sage      { color: var(--sage); }
+  .text-clay      { color: var(--clay); }
+}
+
+/* Subtle texture grain */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, rgba(212, 165, 116, 0.012) 1px, transparent 0);
+  background-size: 3px 3px;
+  z-index: 1;
+}
