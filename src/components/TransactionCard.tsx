@@ -10,10 +10,9 @@ interface Props {
   onClick?: () => void
   isSelected?: boolean
   onToggleSelect?: () => void
-  showCheckbox?: boolean
 }
 
-export default function TransactionCard({ tx, categories = [], currency = 'BHD', hideAmounts = false, onClick, isSelected = false, onToggleSelect, showCheckbox = false }: Props) {
+export default function TransactionCard({ tx, categories = [], currency = 'BHD', hideAmounts = false, onClick, isSelected = false, onToggleSelect }: Props) {
   const description = tx.description || tx.merchant || 'Transaction'
   const amountStr = hideAmounts ? '••••' : fmt(tx.amount, currency)
 
@@ -37,11 +36,9 @@ export default function TransactionCard({ tx, categories = [], currency = 'BHD',
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/50 transition-colors text-left ${isSelected ? 'bg-indigo-500/10' : ''}`}
     >
-      {showCheckbox && (
-        <input type="checkbox" checked={isSelected} onChange={onToggleSelect}
-          onClick={e => e.stopPropagation()}
-          className="w-4 h-4 cursor-pointer flex-shrink-0" />
-      )}
+      <input type="checkbox" checked={isSelected} onChange={onToggleSelect}
+        onClick={e => e.stopPropagation()}
+        className="w-4 h-4 cursor-pointer flex-shrink-0" />
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-100 truncate">{description}</p>

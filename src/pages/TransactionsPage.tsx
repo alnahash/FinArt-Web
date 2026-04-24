@@ -131,19 +131,20 @@ export default function TransactionsPage() {
         <input className="input" type="text" placeholder="Search merchant, bank…"
           value={search} onChange={e => setSearch(e.target.value)} />
 
-        {/* Filters row / Selection row */}
-        {selectedIds.size > 0 ? (
-          <div className="flex gap-2 items-center">
-            <input type="checkbox" checked={selectedIds.size === txs.length} onChange={toggleSelectAll}
-              className="w-4 h-4 cursor-pointer" />
-            <span className="text-sm text-slate-400">{selectedIds.size} selected</span>
-            <button onClick={() => setShowDeleteConfirm(true)}
-              className="ml-auto px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/30 transition-colors">
-              Delete
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-2 flex-wrap">
+        {/* Filters and selection row */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <input type="checkbox" checked={selectedIds.size === txs.length && txs.length > 0} onChange={toggleSelectAll}
+            className="w-4 h-4 cursor-pointer" title="Select all" />
+          {selectedIds.size > 0 && (
+            <>
+              <span className="text-sm text-slate-400">{selectedIds.size} selected</span>
+              <button onClick={() => setShowDeleteConfirm(true)}
+                className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/30 transition-colors">
+                Delete
+              </button>
+            </>
+          )}
+          <div className="flex gap-2 flex-wrap ml-auto">
             {(['all', 'debit', 'credit'] as const).map(t => (
               <button key={t} onClick={() => setTypeFilter(t)}
                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
@@ -156,9 +157,9 @@ export default function TransactionsPage() {
                 {t === 'all' ? 'All' : t === 'debit' ? '↑ Debit' : '↓ Credit'}
               </button>
             ))}
-            <span className="ml-auto text-xs text-slate-500 self-center">{total} transactions</span>
+            <span className="text-xs text-slate-500 self-center">{total} transactions</span>
           </div>
-        )}
+        </div>
 
         {/* Category filter */}
         <CategoryDropdown
@@ -187,7 +188,6 @@ export default function TransactionsPage() {
             {txs.map(tx => (
               <TransactionCard key={tx.id} tx={tx} categories={categories} currency={currency} hideAmounts={hideAmounts}
                 onClick={() => selectedIds.size === 0 && setSelectedTx(tx)}
-                showCheckbox={selectedIds.size > 0}
                 isSelected={selectedIds.has(tx.id)}
                 onToggleSelect={() => toggleSelection(tx.id)} />
             ))}
