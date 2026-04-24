@@ -79,4 +79,5 @@ export interface TransactionFilters {
   year?: number
   type?: 'debit' | 'credit'
   search?: string
+  categoryId?: string
 }

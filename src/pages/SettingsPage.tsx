@@ -53,6 +53,11 @@ export default function SettingsPage() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [reorderError, setReorderError] = useState('')
+  const [newCatIcon, setNewCatIcon] = useState('')
+  const [editIcon, setEditIcon] = useState('')
+  const [showIconPicker, setShowIconPicker] = useState<'add' | string | null>(null)
 
   const loadCategories = async () => {
     if (!user) return
@@ -108,11 +113,12 @@ export default function SettingsPage() {
     const { data } = await createCategory(user.id, {
       name: newCatName.trim(),
       color: newCatColor,
+      icon: newCatIcon || undefined,
       parent_id: addTab === 'sub' ? (newCatParent || undefined) : undefined,
       recurrence_type: newCatType,
       is_income: addTab === 'main' ? newCatIsIncome : undefined,
     })
-    if (data) { setNewCatName(''); setNewCatType('none'); await loadCategories() }
+    if (data) { setNewCatName(''); setNewCatType('none'); setNewCatIcon(''); await loadCategories() }
     setAddingCat(false)
   }
 
@@ -122,11 +128,13 @@ export default function SettingsPage() {
     setEditColor(cat.color)
     setEditIsIncome(cat.is_income)
     setEditRecurrenceType(cat.recurrence_type)
+    setEditIcon(cat.icon ?? '')
+    setShowIconPicker(null)
   }
 
   const handleSaveEdit = async (cat: Category) => {
     setSavingEdit(true)
-    const updates: Parameters<typeof updateCategory>[1] = { name: editName.trim() || cat.name, color: editColor }
+    const updates: Parameters<typeof updateCategory>[1] = { name: editName.trim() || cat.name, color: editColor, icon: editIcon || undefined }
     if (!cat.parent_id) updates.is_income = editIsIncome
     updates.recurrence_type = editRecurrenceType
     console.log('[SettingsPage] Saving category:', cat.id, updates)
@@ -140,10 +148,13 @@ export default function SettingsPage() {
     console.log('[SettingsPage] Save succeeded')
     setEditingId(null)
     setSavingEdit(false)
+    setShowIconPicker(null)
     await loadCategories()
   }
 
   const handleDeleteCategory = async (id: string) => {
+    if (deleteConfirmId !== id) { setDeleteConfirmId(id); return }
+    setDeleteConfirmId(null)
     await deleteCategory(id)
     await loadCategories()
   }
@@ -168,7 +179,13 @@ export default function SettingsPage() {
     const [moved] = reordered.splice(from, 1)
     reordered.splice(to, 0, moved)
 
-    await reorderCategories(reordered.map((cat, i) => ({ id: cat.id, sort_order: i })))
+    try {
+      setReorderError('')
+      await reorderCategories(reordered.map((cat, i) => ({ id: cat.id, sort_order: i })))
+    } catch {
+      setReorderError('Reorder failed — please try again')
+      setTimeout(() => setReorderError(''), 3000)
+    }
     setDragId(null)
     setDragOverId(null)
     await loadCategories()
@@ -205,7 +222,7 @@ export default function SettingsPage() {
 
       {/* ── Finance settings ── */}
       <Section>
-        <SettingRow icon="💰" title="Monthly Budget" subtitle={budgetEnabled ? `BHD ${Number(monthlyBudget || 0).toLocaleString()}` : 'OFF'}>
+        <SettingRow icon="💰" title="Monthly Budget" subtitle={budgetEnabled ? `${currency} ${Number(monthlyBudget || 0).toLocaleString()}` : 'OFF'}>
           <div className="flex items-center gap-2">
             {budgetEnabled && (
               <input
@@ -320,6 +337,11 @@ export default function SettingsPage() {
                     onChange={e => setNewCatName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
                   />
+                  <button
+                    onClick={() => setShowIconPicker(showIconPicker === 'add' ? null : 'add')}
+                    className="w-10 h-10 rounded-xl border flex items-center justify-center text-lg flex-shrink-0"
+                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}
+                  >{newCatIcon || '🏷️'}</button>
                   <input
                     type="color"
                     value={newCatColor}
@@ -328,6 +350,9 @@ export default function SettingsPage() {
                     style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}
                   />
                 </div>
+                {showIconPicker === 'add' && (
+                  <IconPicker selected={newCatIcon} onSelect={e => { setNewCatIcon(e); setShowIconPicker(null) }} />
+                )}
 
                 {addTab === 'main' && (
                   <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
@@ -390,6 +415,9 @@ export default function SettingsPage() {
             </div>
 
             {/* ── Category tree ── */}
+            {reorderError && (
+              <p className="text-xs text-red-400 text-center py-1">{reorderError}</p>
+            )}
             <div className="space-y-4 max-h-[36rem] overflow-y-auto">
               {(['expense', 'income'] as const).map(kind => {
                 const isIncome = kind === 'income'
@@ -428,6 +456,7 @@ export default function SettingsPage() {
                               cat={group}
                               name={editName} onNameChange={setEditName}
                               color={editColor} onColorChange={setEditColor}
+                              icon={editIcon} onIconChange={setEditIcon}
                               isIncome={editIsIncome} onIsIncomeChange={setEditIsIncome}
                               recurrenceType={editRecurrenceType} onRecurrenceTypeChange={setEditRecurrenceType}
                               saving={savingEdit}
@@ -459,9 +488,10 @@ export default function SettingsPage() {
                               >✎</button>
                               <button
                                 onClick={() => handleDeleteCategory(group.id)}
-                                className="text-xs opacity-0 group-hover:opacity-100 hover:text-red-400 transition-colors"
-                                style={{ color: 'var(--text-3)' }}
-                              >✕</button>
+                                className={`text-xs transition-colors ${deleteConfirmId === group.id ? 'text-red-400 opacity-100' : 'opacity-0 group-hover:opacity-100 hover:text-red-400'}`}
+                                style={deleteConfirmId !== group.id ? { color: 'var(--text-3)' } : {}}
+                                title={deleteConfirmId === group.id ? 'Tap again to confirm' : 'Delete'}
+                              >{deleteConfirmId === group.id ? '⚠️' : '✕'}</button>
                             </div>
                           )}
 
@@ -474,6 +504,7 @@ export default function SettingsPage() {
                                   cat={cat}
                                   name={editName} onNameChange={setEditName}
                                   color={editColor} onColorChange={setEditColor}
+                                  icon={editIcon} onIconChange={setEditIcon}
                                   isIncome={editIsIncome} onIsIncomeChange={setEditIsIncome}
                                   recurrenceType={editRecurrenceType} onRecurrenceTypeChange={setEditRecurrenceType}
                                   saving={savingEdit}
@@ -514,9 +545,10 @@ export default function SettingsPage() {
                                   >✎</button>
                                   <button
                                     onClick={() => handleDeleteCategory(cat.id)}
-                                    className="text-xs opacity-0 group-hover:opacity-100 hover:text-red-400 transition-colors"
-                                    style={{ color: 'var(--text-3)' }}
-                                  >✕</button>
+                                    className={`text-xs transition-colors ${deleteConfirmId === cat.id ? 'text-red-400 opacity-100' : 'opacity-0 group-hover:opacity-100 hover:text-red-400'}`}
+                                    style={deleteConfirmId !== cat.id ? { color: 'var(--text-3)' } : {}}
+                                    title={deleteConfirmId === cat.id ? 'Tap again to confirm' : 'Delete'}
+                                  >{deleteConfirmId === cat.id ? '⚠️' : '✕'}</button>
                                 </div>
                               )
                             ))}
@@ -613,72 +645,82 @@ function RecurrenceBadge({ type }: { type: string }) {
   )
 }
 
-function InlineEditForm({ cat, name, onNameChange, color, onColorChange, isIncome, onIsIncomeChange, recurrenceType, onRecurrenceTypeChange, saving, onSave, onCancel, indent }: {
+function InlineEditForm({ cat, name, onNameChange, color, onColorChange, icon, onIconChange, isIncome, onIsIncomeChange, recurrenceType, onRecurrenceTypeChange, saving, onSave, onCancel, indent }: {
   cat: Category
   name: string; onNameChange: (v: string) => void
   color: string; onColorChange: (v: string) => void
+  icon: string; onIconChange: (v: string) => void
   isIncome: boolean; onIsIncomeChange: (v: boolean) => void
   recurrenceType: 'none' | 'one_time' | 'monthly' | 'weekly' | 'yearly'; onRecurrenceTypeChange: (v: 'none' | 'one_time' | 'monthly' | 'weekly' | 'yearly') => void
-  saving: boolean
-  onSave: () => void
-  onCancel: () => void
-  indent?: boolean
+  saving: boolean; onSave: () => void; onCancel: () => void; indent?: boolean
 }) {
+  const [showPicker, setShowPicker] = useState(false)
   const isMain = !cat.parent_id
   return (
     <div className={`p-3 space-y-2 ${indent ? 'pl-8' : ''}`} style={{ backgroundColor: 'var(--bg-muted)', borderLeft: `4px solid ${color}` }}>
       <div className="flex gap-2">
-        <input
-          className="input flex-1 text-sm"
-          value={name}
-          onChange={e => onNameChange(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel() }}
-          autoFocus
-        />
-        <input
-          type="color"
-          value={color}
-          onChange={e => onColorChange(e.target.value)}
-          className="w-10 h-10 rounded-xl border cursor-pointer p-1 flex-shrink-0"
+        <input className="input flex-1 text-sm" value={name} onChange={e => onNameChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel() }} autoFocus />
+        <button onClick={() => setShowPicker(p => !p)}
+          className="w-10 h-10 rounded-xl border flex items-center justify-center text-lg flex-shrink-0"
           style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}
-        />
+        >{icon || '🏷️'}</button>
+        <input type="color" value={color} onChange={e => onColorChange(e.target.value)}
+          className="w-10 h-10 rounded-xl border cursor-pointer p-1 flex-shrink-0"
+          style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }} />
       </div>
+      {showPicker && <IconPicker selected={icon} onSelect={e => { onIconChange(e); setShowPicker(false) }} />}
       {isMain && (
         <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-          <button
-            onClick={() => onIsIncomeChange(false)}
+          <button onClick={() => onIsIncomeChange(false)}
             className={`flex-1 py-1.5 text-xs font-semibold transition-colors ${!isIncome ? 'bg-red-500/20 text-red-400' : 'text-secondary'}`}
-            style={isIncome ? { backgroundColor: 'var(--bg-input)' } : {}}
-          >📉 Expense</button>
-          <button
-            onClick={() => onIsIncomeChange(true)}
+            style={isIncome ? { backgroundColor: 'var(--bg-input)' } : {}}>📉 Expense</button>
+          <button onClick={() => onIsIncomeChange(true)}
             className={`flex-1 py-1.5 text-xs font-semibold transition-colors ${isIncome ? 'bg-green-500/20 text-green-400' : 'text-secondary'}`}
-            style={!isIncome ? { backgroundColor: 'var(--bg-input)' } : {}}
-          >📈 Income</button>
+            style={!isIncome ? { backgroundColor: 'var(--bg-input)' } : {}}>📈 Income</button>
         </div>
       )}
-      <div className="grid grid-cols-5 gap-1">
-        {(['none', 'one_time', 'weekly', 'monthly', 'yearly'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => onRecurrenceTypeChange(t)}
-            className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              recurrenceType === t ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'border-transparent text-secondary'
-            }`}
-            style={recurrenceType !== t ? { backgroundColor: 'var(--bg-input)' } : {}}
-          >
-            {t === 'none' ? '—' : t === 'one_time' ? '1×' : t === 'weekly' ? '🔁Wk' : t === 'monthly' ? '🔁Mo' : '📅Yr'}
-          </button>
-        ))}
-      </div>
+      {!isMain && (
+        <div className="grid grid-cols-5 gap-1">
+          {(['none', 'one_time', 'weekly', 'monthly', 'yearly'] as const).map(t => (
+            <button key={t} onClick={() => onRecurrenceTypeChange(t)}
+              className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${recurrenceType === t ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'border-transparent text-secondary'}`}
+              style={recurrenceType !== t ? { backgroundColor: 'var(--bg-input)' } : {}}>
+              {t === 'none' ? '—' : t === 'one_time' ? '1×' : t === 'weekly' ? '🔁Wk' : t === 'monthly' ? '🔁Mo' : '📅Yr'}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex gap-2">
-        <button onClick={onSave} disabled={saving} className="btn-primary flex-1 text-xs py-2">
-          {saving ? 'Saving…' : '✓ Save'}
-        </button>
-        <button onClick={onCancel} className="flex-1 text-xs py-2 rounded-xl border text-secondary" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-input)' }}>
-          Cancel
-        </button>
+        <button onClick={onSave} disabled={saving} className="btn-primary flex-1 text-xs py-2">{saving ? 'Saving…' : '✓ Save'}</button>
+        <button onClick={onCancel} className="flex-1 text-xs py-2 rounded-xl border text-secondary" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-input)' }}>Cancel</button>
       </div>
+    </div>
+  )
+}
+
+const ICON_OPTIONS = [
+  '💰','💳','🏦','📈','📉','💵','💸','🪙',
+  '🛒','🍽️','☕','🚗','⛽','🏠','🏥','📱',
+  '✈️','🎁','🛍️','💆','🏫','👨‍👩‍👧‍👦','🔧','📋',
+  '🛡️','🔄','🏛️','📦','💡','📅','✨','💬',
+]
+
+function IconPicker({ selected, onSelect }: { selected: string; onSelect: (e: string) => void }) {
+  return (
+    <div className="grid grid-cols-8 gap-1 p-2 rounded-xl border" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}>
+      {ICON_OPTIONS.map(e => (
+        <button key={e} onClick={() => onSelect(e)}
+          className={`text-lg p-1 rounded-lg transition-colors ${selected === e ? 'bg-purple-500/30 ring-1 ring-purple-500' : 'hover:bg-slate-600/40'}`}>
+          {e}
+        </button>
+      ))}
+      {selected && (
+        <button onClick={() => onSelect('')}
+          className="text-xs text-slate-400 hover:text-red-400 p-1 rounded-lg col-span-2 transition-colors">
+          ✕ Clear
+        </button>
+      )}
     </div>
   )
 }

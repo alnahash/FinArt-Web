@@ -1,6 +1,14 @@
 import { supabase } from '../lib/supabase'
 import type { Transaction, Category, CategoryGroup, Budget, MonthlySummary, CategorySpending, TransactionFilters } from '../types'
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function monthRange(year: number, month: number, startDay = 1) {
+  const from = new Date(year, month - 1, startDay)
+  const to = new Date(year, month, startDay - 1, 23, 59, 59)
+  return { from: from.toISOString(), to: to.toISOString() }
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const signIn = (email: string, password: string) =>
@@ -15,6 +23,11 @@ export const signUp = async (email: string, password: string, fullName: string) 
 }
 
 export const signOut = () => supabase.auth.signOut()
+
+export const resetPassword = (email: string) =>
+  supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/#/reset-password',
+  })
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
@@ -32,16 +45,16 @@ export const getCategories = (userId: string) =>
 export const createCategory = (userId: string, cat: { name: string; icon?: string; color?: string; budget_limit?: number; parent_id?: string; recurrence_type?: string; is_income?: boolean }) =>
   supabase.from('categories').insert({ user_id: userId, ...cat }).select().single()
 
-export const updateCategory = (id: string, updates: { name?: string; color?: string; is_income?: boolean; recurrence_type?: string }) =>
+export const updateCategory = (id: string, updates: { name?: string; icon?: string; color?: string; is_income?: boolean; recurrence_type?: string }) =>
   supabase.from('categories').update(updates).eq('id', id)
+
+export const deleteCategory = (id: string) =>
+  supabase.from('categories').delete().eq('id', id)
 
 export const reorderCategories = (items: { id: string; sort_order: number }[]) =>
   Promise.all(items.map(({ id, sort_order }) =>
     supabase.from('categories').update({ sort_order }).eq('id', id)
   ))
-
-export const deleteCategory = (id: string) =>
-  supabase.from('categories').delete().eq('id', id)
 
 /** Groups flat categories into a tree: [ { group, children[] } ] */
 export function buildCategoryTree(categories: Category[]): CategoryGroup[] {
@@ -54,7 +67,7 @@ export function buildCategoryTree(categories: Category[]): CategoryGroup[] {
 
 // ── Transactions ──────────────────────────────────────────────────────────────
 
-export const getTransactions = async (userId: string, filters: TransactionFilters, limit = 30, offset = 0) => {
+export const getTransactions = async (userId: string, filters: TransactionFilters, limit = 30, offset = 0, startDay = 1) => {
   let q = supabase
     .from('transactions')
     .select('*, category:categories(*)', { count: 'exact' })
@@ -63,11 +76,11 @@ export const getTransactions = async (userId: string, filters: TransactionFilter
     .range(offset, offset + limit - 1)
 
   if (filters.month && filters.year) {
-    const from = new Date(filters.year, filters.month - 1, 1).toISOString()
-    const to = new Date(filters.year, filters.month, 0, 23, 59, 59).toISOString()
+    const { from, to } = monthRange(filters.year, filters.month, startDay)
     q = q.gte('transaction_date', from).lte('transaction_date', to)
   }
   if (filters.type) q = q.eq('type', filters.type)
+  if (filters.categoryId) q = q.eq('category_id', filters.categoryId)
   if (filters.search) {
     q = q.or(`merchant.ilike.%${filters.search}%,description.ilike.%${filters.search}%,bank_name.ilike.%${filters.search}%`)
   }
@@ -90,15 +103,22 @@ export const insertTransaction = (
   }
 ) => supabase.from('transactions').insert({ user_id: userId, ...tx }).select('*, category:categories(*)').single()
 
+export const updateTransaction = (id: string, updates: {
+  type?: 'debit' | 'credit'
+  amount?: number
+  merchant?: string
+  description?: string
+  transaction_date?: string
+}) => supabase.from('transactions').update(updates).eq('id', id).select('*, category:categories(*)').single()
+
 export const updateTransactionCategory = (id: string, categoryId: string | null) =>
   supabase.from('transactions').update({ category_id: categoryId }).eq('id', id)
 
 export const deleteTransaction = (id: string) =>
   supabase.from('transactions').delete().eq('id', id)
 
-export const getMonthlySummary = async (userId: string, month: number, year: number): Promise<MonthlySummary> => {
-  const from = new Date(year, month - 1, 1).toISOString()
-  const to = new Date(year, month, 0, 23, 59, 59).toISOString()
+export const getMonthlySummary = async (userId: string, month: number, year: number, startDay = 1): Promise<MonthlySummary> => {
+  const { from, to } = monthRange(year, month, startDay)
 
   const { data } = await supabase
     .from('transactions')
@@ -113,9 +133,8 @@ export const getMonthlySummary = async (userId: string, month: number, year: num
   return { totalDebit, totalCredit, netSavings: totalCredit - totalDebit, transactionCount: rows.length }
 }
 
-export const getCategorySpending = async (userId: string, month: number, year: number, categories: Category[]): Promise<CategorySpending[]> => {
-  const from = new Date(year, month - 1, 1).toISOString()
-  const to = new Date(year, month, 0, 23, 59, 59).toISOString()
+export const getCategorySpending = async (userId: string, month: number, year: number, categories: Category[], startDay = 1): Promise<CategorySpending[]> => {
+  const { from, to } = monthRange(year, month, startDay)
 
   const { data: txs } = await supabase
     .from('transactions')
@@ -144,7 +163,6 @@ export const getCategorySpending = async (userId: string, month: number, year: n
     if (b.category_id) budgetMap[b.category_id] = Number(b.amount)
   }
 
-  // Only sub-categories (parent_id != null)
   return categories
     .filter(c => c.parent_id !== null)
     .map(cat => {
@@ -159,12 +177,13 @@ export const getCategorySpending = async (userId: string, month: number, year: n
 
 export const getMonthlyTotals = async (
   userId: string,
-  periods: { month: number; year: number }[]
+  periods: { month: number; year: number }[],
+  startDay = 1
 ): Promise<{ month: number; year: number; debit: number; credit: number }[]> => {
   if (!periods.length) return []
   const first = periods[0], last = periods[periods.length - 1]
-  const from = new Date(first.year, first.month - 1, 1).toISOString()
-  const to = new Date(last.year, last.month, 0, 23, 59, 59).toISOString()
+  const { from } = monthRange(first.year, first.month, startDay)
+  const { to } = monthRange(last.year, last.month, startDay)
 
   const { data } = await supabase
     .from('transactions')
@@ -174,8 +193,8 @@ export const getMonthlyTotals = async (
     .lte('transaction_date', to)
 
   return periods.map(({ month, year }) => {
-    const start = new Date(year, month - 1, 1)
-    const end = new Date(year, month, 0, 23, 59, 59)
+    const { from: pFrom, to: pTo } = monthRange(year, month, startDay)
+    const start = new Date(pFrom), end = new Date(pTo)
     const rows = (data ?? []).filter(t => {
       const d = new Date(t.transaction_date)
       return d >= start && d <= end
@@ -195,3 +214,16 @@ export const getBudgets = (userId: string, month: number, year: number) =>
 
 export const upsertBudget = (userId: string, categoryId: string, month: number, year: number, amount: number) =>
   supabase.from('budgets').upsert({ user_id: userId, category_id: categoryId, month, year, amount }, { onConflict: 'user_id,category_id,month,year' })
+
+export const copyBudgetsFromPreviousMonth = async (userId: string, month: number, year: number) => {
+  const prevMonth = month === 1 ? 12 : month - 1
+  const prevYear = month === 1 ? year - 1 : year
+  const { data: prev } = await getBudgets(userId, prevMonth, prevYear)
+  if (!prev || prev.length === 0) return { copied: 0 }
+  await Promise.all(
+    prev
+      .filter((b: Budget) => b.category_id && b.amount > 0)
+      .map((b: Budget) => upsertBudget(userId, b.category_id!, month, year, b.amount))
+  )
+  return { copied: prev.length }
+}

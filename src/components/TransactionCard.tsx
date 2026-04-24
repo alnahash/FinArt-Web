@@ -1,39 +1,33 @@
 import { format } from 'date-fns'
 import type { Transaction } from '../types'
+import { fmt } from '../lib/currency'
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  // Groups
   'INCOME': '💰', 'FIXED BILLS': '📋', 'ANNUAL': '📅', 'FAMILY': '👨‍👩‍👧‍👦',
   'FOOD': '🍽️', 'TRANSPORT': '🚗', 'LIFESTYLE': '✨', 'FINANCIAL': '💳',
-  // INCOME
   'Salary': '💰', 'Rental income': '🏠', 'Other income': '💵',
-  // FIXED BILLS
   'Telecom': '📱', 'Utilities': '💡', 'House help': '🏡', 'Monthly subscriptions': '📦',
-  // ANNUAL
   'Insurance': '🛡️', 'Annual subscriptions': '🔄', 'Government fees': '🏛️',
-  // FAMILY
-  'School fees': '🏫', 'Zainab': '👩', 'Noor': '👧', 'Shahad': '👧', 'Ahmed': '👦',
-  'Gifts & occasions': '🎁',
-  // FOOD
+  'School fees': '🏫', 'Gifts & occasions': '🎁',
   'Groceries': '🛒', 'Dining out': '🍽️', 'Coffee shop': '☕',
-  // TRANSPORT
   'Fuel': '⛽', 'Car service': '🔧', 'Health': '🏥',
-  // LIFESTYLE
   'Shopping': '🛍️', 'SPA & wellness': '💆', 'Travel': '✈️',
-  // FINANCIAL
   'Savings transfer': '🏦', 'Investment': '📈',
 }
 
 interface Props {
   tx: Transaction
+  currency?: string
+  hideAmounts?: boolean
   onClick?: () => void
 }
 
-export default function TransactionCard({ tx, onClick }: Props) {
-  const emoji = tx.category ? (CATEGORY_EMOJI[tx.category.name] ?? '💬') : '💬'
+export default function TransactionCard({ tx, currency = 'BHD', hideAmounts = false, onClick }: Props) {
+  const emoji = tx.category ? (tx.category.icon || (CATEGORY_EMOJI[tx.category.name] ?? '💬')) : '💬'
   const color = tx.category?.color ?? '#6366f1'
   const title = tx.merchant || tx.bank_name || 'Transaction'
   const sub = tx.category?.name ?? (tx.account_number ? `A/C ${tx.account_number}` : 'Uncategorised')
+  const amountStr = hideAmounts ? '••••' : fmt(tx.amount, currency)
 
   return (
     <button
@@ -52,7 +46,7 @@ export default function TransactionCard({ tx, onClick }: Props) {
       </div>
       <div className="text-right flex-shrink-0">
         <p className={`text-sm font-semibold ${tx.type === 'debit' ? 'text-red-400' : 'text-green-400'}`}>
-          {tx.type === 'debit' ? '−' : '+'}₹{Number(tx.amount).toLocaleString('en-IN')}
+          {tx.type === 'debit' ? '−' : '+'}{amountStr}
         </p>
         <p className="text-xs text-slate-500">
           {format(new Date(tx.transaction_date), 'd MMM')}

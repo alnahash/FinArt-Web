@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { format, addMonths, subMonths } from 'date-fns'
+import { format, addMonths, subMonths, isSameMonth } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
-import { getCategories, getCategorySpending, upsertBudget, getBudgets, buildCategoryTree } from '../services/db'
+import { getCategories, getCategorySpending, upsertBudget, getBudgets, buildCategoryTree, copyBudgetsFromPreviousMonth } from '../services/db'
 import { fmt as fmtCurrency } from '../lib/currency'
 import type { CategorySpending, CategoryGroup } from '../types'
 
@@ -10,6 +10,7 @@ export default function BudgetPage() {
   const { user } = useAuth()
   const profile = useProfile()
   const currency = profile?.currency ?? 'BHD'
+  const startDay = profile?.month_start_day ?? 1
 
   const [currentDate, setCurrentDate] = useState(new Date())
   const [tree, setTree] = useState<CategoryGroup[]>([])
@@ -19,9 +20,12 @@ export default function BudgetPage() {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [copying, setCopying] = useState(false)
+  const [copyMsg, setCopyMsg] = useState('')
 
   const month = currentDate.getMonth() + 1
   const year = currentDate.getFullYear()
+  const isCurrentMonth = isSameMonth(currentDate, new Date())
 
   const loadData = useCallback(async () => {
     if (!user) return
@@ -29,7 +33,7 @@ export default function BudgetPage() {
     const { data: cats } = await getCategories(user.id)
     const allCats = cats ?? []
     setTree(buildCategoryTree(allCats))
-    const sp = await getCategorySpending(user.id, month, year, allCats)
+    const sp = await getCategorySpending(user.id, month, year, allCats, startDay)
     const { data: budgets } = await getBudgets(user.id, month, year)
     const budgetMap: Record<string, number> = {}
     for (const b of budgets ?? []) if (b.category_id) budgetMap[b.category_id] = b.amount
@@ -45,7 +49,7 @@ export default function BudgetPage() {
       })
     setSpending(full)
     setLoading(false)
-  }, [user, month, year])
+  }, [user, month, year, startDay])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -58,6 +62,17 @@ export default function BudgetPage() {
     setSaving(false)
     setEditingId(null)
     await loadData()
+  }
+
+  const handleCopyFromLastMonth = async () => {
+    if (!user) return
+    setCopying(true)
+    setCopyMsg('')
+    const { copied } = await copyBudgetsFromPreviousMonth(user.id, month, year)
+    await loadData()
+    setCopying(false)
+    setCopyMsg(copied > 0 ? `Copied ${copied} budgets from last month` : 'No budgets found in previous month')
+    setTimeout(() => setCopyMsg(''), 3000)
   }
 
   const toggleGroup = (id: string) => setCollapsed(p => ({ ...p, [id]: !p[id] }))
@@ -86,14 +101,17 @@ export default function BudgetPage() {
     <div className="p-4 space-y-4">
 
       {/* Month selector */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <button className="btn-ghost text-xl" onClick={() => setCurrentDate(d => subMonths(d, 1))}>‹</button>
-        <h2 className="font-semibold text-slate-200">{format(currentDate, 'MMMM yyyy')}</h2>
-        <button
-          className="btn-ghost text-xl"
-          onClick={() => setCurrentDate(d => addMonths(d, 1))}
-          disabled={format(currentDate, 'MM/yyyy') === format(new Date(), 'MM/yyyy')}
-        >›</button>
+        <h2 className="font-semibold text-slate-200 flex-1 text-center">{format(currentDate, 'MMMM yyyy')}</h2>
+        {!isCurrentMonth && (
+          <button
+            onClick={() => setCurrentDate(new Date())}
+            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded-lg bg-indigo-500/10 transition-colors"
+          >Today</button>
+        )}
+        <button className="btn-ghost text-xl" onClick={() => setCurrentDate(d => addMonths(d, 1))}
+          disabled={isCurrentMonth}>›</button>
       </div>
 
       {/* Summary strip */}
@@ -108,6 +126,18 @@ export default function BudgetPage() {
         />
       </div>
 
+      {/* Copy from last month */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleCopyFromLastMonth}
+          disabled={copying}
+          className="text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors disabled:opacity-50"
+        >
+          {copying ? 'Copying…' : '📋 Copy budgets from last month'}
+        </button>
+        {copyMsg && <span className="text-xs text-green-400">{copyMsg}</span>}
+      </div>
+
       {/* Category groups */}
       <div className="space-y-3">
         {tree.map(({ group, children }) => {
@@ -119,21 +149,14 @@ export default function BudgetPage() {
 
           return (
             <div key={group.id} className="rounded-2xl overflow-hidden border border-slate-700/60 bg-slate-800/40">
-
-              {/* ── Group Header ── */}
-              <button
-                onClick={() => toggleGroup(group.id)}
+              <button onClick={() => toggleGroup(group.id)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-700/30 transition-colors"
-                style={{ borderLeft: `4px solid ${group.color}` }}
-              >
-                {/* Color dot + name */}
+                style={{ borderLeft: `4px solid ${group.color}` }}>
                 <div className="flex-1 flex items-center gap-2.5 min-w-0 text-left">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
                   <span className="font-bold text-sm text-slate-100 tracking-wide uppercase">{group.name}</span>
                   <span className="text-xs text-slate-500 font-normal normal-case">({children.length})</span>
                 </div>
-
-                {/* Group total */}
                 <div className="text-right flex-shrink-0">
                   {(totals.spent > 0 || totals.budget > 0) && (
                     <>
@@ -149,7 +172,6 @@ export default function BudgetPage() {
                 <span className="text-slate-500 text-sm ml-1 flex-shrink-0">{isOpen ? '▾' : '›'}</span>
               </button>
 
-              {/* Group progress bar */}
               {totals.budget > 0 && !isIncomeGroup && (
                 <div className="h-1.5 bg-slate-700 mx-4 rounded-full overflow-hidden -mt-1 mb-1">
                   <div
@@ -159,7 +181,6 @@ export default function BudgetPage() {
                 </div>
               )}
 
-              {/* ── Sub-categories ── */}
               {isOpen && children.length > 0 && (
                 <div className="border-t border-slate-700/50">
                   {children.map((cat, idx) => {
@@ -170,31 +191,19 @@ export default function BudgetPage() {
                     const isLast = idx === children.length - 1
 
                     return (
-                      <div
-                        key={cat.id}
-                        className={`px-4 py-3 ${!isLast ? 'border-b border-slate-700/30' : ''} bg-slate-900/20`}
-                      >
-                        {/* Sub-cat name row */}
+                      <div key={cat.id}
+                        className={`px-4 py-3 ${!isLast ? 'border-b border-slate-700/30' : ''} bg-slate-900/20`}>
                         <div className="flex items-center gap-2 mb-1.5">
-                          {/* Indent + color indicator */}
                           <span className="w-5 flex-shrink-0" />
                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
                           <span className="text-sm text-slate-200 flex-1 font-medium">{cat.name}</span>
-
-                          {/* Amount + edit */}
                           {editingId === cat.id ? (
                             <div className="flex items-center gap-1.5">
                               <input
                                 className="w-24 bg-slate-700 border border-slate-500 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                                type="number"
-                                value={editValue}
-                                onChange={e => setEditValue(e.target.value)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') handleSaveBudget(cat.id)
-                                  if (e.key === 'Escape') setEditingId(null)
-                                }}
-                                autoFocus
-                              />
+                                type="number" value={editValue} onChange={e => setEditValue(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleSaveBudget(cat.id); if (e.key === 'Escape') setEditingId(null) }}
+                                autoFocus />
                               <button onClick={() => handleSaveBudget(cat.id)} disabled={saving}
                                 className="text-xs text-green-400 hover:text-green-300 font-bold px-1">✓</button>
                               <button onClick={() => setEditingId(null)}
@@ -210,16 +219,11 @@ export default function BudgetPage() {
                                   <span className="text-slate-500 text-xs ml-1">/ {fmtCurrency(budget, currency)}</span>
                                 )}
                               </div>
-                              <button
-                                onClick={() => { setEditingId(cat.id); setEditValue(String(budget || '')) }}
-                                className="text-slate-600 hover:text-purple-400 transition-colors text-sm"
-                                title="Set budget"
-                              >✏️</button>
+                              <button onClick={() => { setEditingId(cat.id); setEditValue(String(budget || '')) }}
+                                className="text-slate-600 hover:text-purple-400 transition-colors text-sm" title="Set budget">✏️</button>
                             </div>
                           )}
                         </div>
-
-                        {/* Sub-cat progress bar */}
                         {budget > 0 && !cat.is_income && (
                           <div className="ml-9 h-1.5 bg-slate-700 rounded-full overflow-hidden">
                             <div

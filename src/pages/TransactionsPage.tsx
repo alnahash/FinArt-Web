@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { format, addMonths, subMonths } from 'date-fns'
+import { format, addMonths, subMonths, isSameMonth } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
-import { getTransactions, getCategories, insertTransaction } from '../services/db'
+import { getTransactions, getCategories, insertTransaction, buildCategoryTree } from '../services/db'
 import type { Transaction, Category } from '../types'
 import TransactionCard from '../components/TransactionCard'
 import AddTransactionModal from '../components/AddTransactionModal'
@@ -14,6 +14,9 @@ export default function TransactionsPage() {
   const { user } = useAuth()
   const profile = useProfile()
   const currency = profile?.currency ?? 'BHD'
+  const hideAmounts = profile?.hide_amounts ?? false
+  const startDay = profile?.month_start_day ?? 1
+
   const [currentDate, setCurrentDate] = useState(new Date())
   const [txs, setTxs] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -22,6 +25,7 @@ export default function TransactionsPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [offset, setOffset] = useState(0)
   const [typeFilter, setTypeFilter] = useState<'all' | 'debit' | 'credit'>('all')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -30,6 +34,7 @@ export default function TransactionsPage() {
 
   const month = currentDate.getMonth() + 1
   const year = currentDate.getFullYear()
+  const isCurrentMonth = isSameMonth(currentDate, new Date())
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current)
@@ -44,8 +49,13 @@ export default function TransactionsPage() {
 
     const { data, count } = await getTransactions(
       user.id,
-      { month, year, type: typeFilter === 'all' ? undefined : typeFilter, search: debouncedSearch || undefined },
-      PAGE, newOffset
+      {
+        month, year,
+        type: typeFilter === 'all' ? undefined : typeFilter,
+        search: debouncedSearch || undefined,
+        categoryId: categoryFilter || undefined,
+      },
+      PAGE, newOffset, startDay
     )
     if (reset) setTxs(data as Transaction[] ?? [])
     else setTxs(prev => [...prev, ...(data as Transaction[] ?? [])])
@@ -53,9 +63,9 @@ export default function TransactionsPage() {
     setOffset(newOffset + PAGE)
     if (reset) setLoading(false)
     else setLoadingMore(false)
-  }, [user, month, year, typeFilter, debouncedSearch, offset])
+  }, [user, month, year, typeFilter, debouncedSearch, categoryFilter, startDay, offset])
 
-  useEffect(() => { loadTxs(true) }, [user, month, year, typeFilter, debouncedSearch]) // eslint-disable-line
+  useEffect(() => { loadTxs(true) }, [user, month, year, typeFilter, debouncedSearch, categoryFilter, startDay]) // eslint-disable-line
 
   useEffect(() => {
     if (!user) return
@@ -68,51 +78,66 @@ export default function TransactionsPage() {
     loadTxs(true)
   }
 
-  const handleRefresh = () => loadTxs(true)
+  const subCats = categories.filter(c => c.parent_id !== null)
+  const tree = buildCategoryTree(categories)
 
   return (
     <div className="flex flex-col h-full">
       {/* Controls */}
       <div className="p-4 space-y-3 sticky top-14 bg-slate-950 z-10 border-b border-slate-800">
         {/* Month selector */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <button className="btn-ghost" onClick={() => setCurrentDate(d => subMonths(d, 1))}>‹</button>
-          <span className="font-semibold text-slate-200">{format(currentDate, 'MMMM yyyy')}</span>
+          <span className="font-semibold text-slate-200 flex-1 text-center">{format(currentDate, 'MMMM yyyy')}</span>
+          {!isCurrentMonth && (
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded-lg bg-indigo-500/10 transition-colors"
+            >Today</button>
+          )}
           <button
             className="btn-ghost"
             onClick={() => setCurrentDate(d => addMonths(d, 1))}
-            disabled={format(currentDate, 'MM/yyyy') === format(new Date(), 'MM/yyyy')}
+            disabled={isCurrentMonth}
           >›</button>
         </div>
 
         {/* Search */}
-        <input
-          className="input"
-          type="text"
-          placeholder="Search merchant, bank…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <input className="input" type="text" placeholder="Search merchant, bank…"
+          value={search} onChange={e => setSearch(e.target.value)} />
 
-        {/* Type filter */}
-        <div className="flex gap-2">
+        {/* Filters row */}
+        <div className="flex gap-2 flex-wrap">
           {(['all', 'debit', 'credit'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
+            <button key={t} onClick={() => setTypeFilter(t)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
                 typeFilter === t
                   ? t === 'debit' ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/40'
                     : t === 'credit' ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
                     : 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/40'
                   : 'bg-slate-700 text-slate-400 hover:text-slate-200'
-              }`}
-            >
+              }`}>
               {t === 'all' ? 'All' : t === 'debit' ? '↑ Debit' : '↓ Credit'}
             </button>
           ))}
           <span className="ml-auto text-xs text-slate-500 self-center">{total} transactions</span>
         </div>
+
+        {/* Category filter */}
+        <select
+          className="input text-sm"
+          value={categoryFilter}
+          onChange={e => setCategoryFilter(e.target.value)}
+        >
+          <option value="">All categories</option>
+          {tree.map(({ group, children }) =>
+            children.length > 0 ? (
+              <optgroup key={group.id} label={group.name}>
+                {children.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </optgroup>
+            ) : null
+          )}
+        </select>
       </div>
 
       {/* List */}
@@ -132,15 +157,12 @@ export default function TransactionsPage() {
         ) : (
           <div className="divide-y divide-slate-800">
             {txs.map(tx => (
-              <TransactionCard key={tx.id} tx={tx} onClick={() => setSelectedTx(tx)} />
+              <TransactionCard key={tx.id} tx={tx} currency={currency} hideAmounts={hideAmounts}
+                onClick={() => setSelectedTx(tx)} />
             ))}
             {txs.length < total && (
               <div className="p-4 text-center">
-                <button
-                  className="btn-ghost text-sm"
-                  onClick={() => loadTxs(false)}
-                  disabled={loadingMore}
-                >
+                <button className="btn-ghost text-sm" onClick={() => loadTxs(false)} disabled={loadingMore}>
                   {loadingMore ? 'Loading…' : `Load more (${total - txs.length} remaining)`}
                 </button>
               </div>
@@ -150,28 +172,19 @@ export default function TransactionsPage() {
       </div>
 
       {/* FAB */}
-      <button
-        onClick={() => setShowAdd(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-indigo-500 hover:bg-indigo-400 text-white rounded-full shadow-lg text-2xl flex items-center justify-center transition-colors z-20"
-      >
+      <button onClick={() => setShowAdd(true)}
+        className="fixed bottom-20 right-4 w-14 h-14 bg-indigo-500 hover:bg-indigo-400 text-white rounded-full shadow-lg text-2xl flex items-center justify-center transition-colors z-20">
         +
       </button>
 
       {showAdd && (
-        <AddTransactionModal
-          categories={categories}
-          currency={currency}
-          onClose={() => setShowAdd(false)}
-          onSave={handleAddTx}
-        />
+        <AddTransactionModal categories={categories} currency={currency}
+          onClose={() => setShowAdd(false)} onSave={handleAddTx} />
       )}
       {selectedTx && (
-        <TransactionDetailModal
-          tx={selectedTx}
-          categories={categories}
-          onClose={() => setSelectedTx(null)}
-          onUpdated={handleRefresh}
-        />
+        <TransactionDetailModal tx={selectedTx} categories={categories}
+          currency={currency} hideAmounts={hideAmounts}
+          onClose={() => setSelectedTx(null)} onUpdated={() => loadTxs(true)} />
       )}
     </div>
   )

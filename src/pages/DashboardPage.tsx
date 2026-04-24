@@ -16,13 +16,15 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const profile = useProfile()
   const currency = profile?.currency ?? 'BHD'
+  const hideAmounts = profile?.hide_amounts ?? false
+  const startDay = profile?.month_start_day ?? 1
   const navigate = useNavigate()
 
   const [currentDate] = useState(new Date())
   const month = currentDate.getMonth() + 1
   const year = currentDate.getFullYear()
 
-  const [totalDebit, setTotalDebit] = useState(0)
+  const [summary, setSummary] = useState({ totalDebit: 0, totalCredit: 0, netSavings: 0 })
   const [recentTxs, setRecentTxs] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [monthlyData, setMonthlyData] = useState<{ month: number; year: number; debit: number }[]>([])
@@ -39,17 +41,17 @@ export default function DashboardPage() {
     if (!user) return
     setLoading(true)
     const [sumRes, catsRes, txsRes, monthlyRes] = await Promise.all([
-      getMonthlySummary(user.id, month, year),
+      getMonthlySummary(user.id, month, year, startDay),
       getCategories(user.id),
-      getTransactions(user.id, { month, year }, 5, 0),
-      getMonthlyTotals(user.id, periods),
+      getTransactions(user.id, { month, year }, 5, 0, startDay),
+      getMonthlyTotals(user.id, periods, startDay),
     ])
-    setTotalDebit(sumRes.totalDebit)
+    setSummary(sumRes)
     setCategories(catsRes.data ?? [])
     setRecentTxs(txsRes.data as Transaction[] ?? [])
     setMonthlyData(monthlyRes.map(r => ({ month: r.month, year: r.year, debit: r.debit })))
     setLoading(false)
-  }, [user, month, year])
+  }, [user, month, year, startDay])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -62,37 +64,53 @@ export default function DashboardPage() {
   const monthlyBudget = profile?.monthly_budget ?? 0
   const debits = monthlyData.map(d => d.debit)
   const avg = debits.length ? debits.reduce((a, b) => a + b, 0) / debits.length : 0
-  const avgPct = avg > 0 ? Math.round((totalDebit / avg) * 100) : 0
-  const budgetPct = monthlyBudget > 0 ? Math.min((totalDebit / monthlyBudget) * 100, 100) : 0
-  const overBudget = monthlyBudget > 0 && totalDebit > monthlyBudget
+  const avgPct = avg > 0 ? Math.round((summary.totalDebit / avg) * 100) : 0
+  const budgetPct = monthlyBudget > 0 ? Math.min((summary.totalDebit / monthlyBudget) * 100, 100) : 0
+  const overBudget = monthlyBudget > 0 && summary.totalDebit > monthlyBudget
+
+  const mask = (val: number) => hideAmounts ? '••••' : fmtCurrency(val, currency)
 
   return (
     <div className="bg-app min-h-full">
 
-      {/* Personal sub-header */}
       <div className="flex justify-end px-4 pt-3 pb-1">
         <span className="text-slate-400 text-sm flex items-center gap-1">👤 Personal</span>
       </div>
 
-      {/* ── Expenses section ── */}
+      {/* Expenses + Net Savings */}
       <div className="px-4 pt-1 pb-3">
         <p className="text-slate-300 text-base font-light mb-1">Expenses</p>
 
         <div className="flex items-baseline justify-between">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-white text-2xl font-bold">{fmtCurrency(totalDebit, currency)}</span>
+            <span className="text-white text-2xl font-bold">{mask(summary.totalDebit)}</span>
             {monthlyBudget > 0 && (
               <span className="text-green-400 text-base font-medium">
-                ({Number(monthlyBudget).toLocaleString()})
+                ({hideAmounts ? '••••' : Number(monthlyBudget).toLocaleString()})
               </span>
             )}
           </div>
           {avg > 0 && <span className="text-white text-2xl font-bold">{avgPct}%</span>}
         </div>
 
-        <div className="flex justify-between text-slate-400 text-xs mt-0.5 mb-3">
+        <div className="flex justify-between text-slate-400 text-xs mt-0.5 mb-2">
           <span>{format(currentDate, 'MMMM-yyyy')}</span>
           {avg > 0 && <span>of monthly avg</span>}
+        </div>
+
+        {/* Net savings row */}
+        <div className="flex items-center gap-3 mb-3 px-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400">Income</span>
+            <span className="text-xs font-semibold text-green-400">{mask(summary.totalCredit)}</span>
+          </div>
+          <span className="text-slate-600">·</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400">Savings</span>
+            <span className={`text-xs font-semibold ${summary.netSavings >= 0 ? 'text-indigo-400' : 'text-red-400'}`}>
+              {summary.netSavings >= 0 ? '+' : '−'}{mask(Math.abs(summary.netSavings))}
+            </span>
+          </div>
         </div>
 
         {/* Chart */}
@@ -104,23 +122,20 @@ export default function DashboardPage() {
         {loading && <div className="h-40 rounded-xl bg-slate-800 animate-pulse" />}
       </div>
 
-      <button
-        onClick={() => navigate('/transactions')}
-        className="mx-4 mb-6 text-purple-400 text-xs font-bold tracking-[0.15em] uppercase"
-      >
+      <button onClick={() => navigate('/transactions')}
+        className="mx-4 mb-6 text-purple-400 text-xs font-bold tracking-[0.15em] uppercase">
         VIEW DETAILS
       </button>
 
-      {/* ── Budgets section ── */}
+      {/* Budgets */}
       <div className="px-4 mb-2">
         <p className="text-slate-200 text-base font-light mb-3">Budgets</p>
-
         {monthlyBudget > 0 ? (
           <>
             <div className="flex justify-between items-center mb-1.5">
               <span className="text-slate-300 text-sm font-medium">Monthly Budget</span>
               <span className="text-slate-400 text-xs">
-                Spent {Number(totalDebit.toFixed(2)).toLocaleString()} of {Number(monthlyBudget).toLocaleString()}
+                {hideAmounts ? '••••' : `Spent ${Number(summary.totalDebit.toFixed(2)).toLocaleString()} of ${Number(monthlyBudget).toLocaleString()}`}
               </span>
             </div>
             <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
@@ -135,20 +150,18 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <button
-        onClick={() => navigate('/budget')}
-        className="mx-4 mb-6 text-purple-400 text-xs font-bold tracking-[0.15em] uppercase"
-      >
+      <button onClick={() => navigate('/budget')}
+        className="mx-4 mb-6 text-purple-400 text-xs font-bold tracking-[0.15em] uppercase">
         MANAGE ALL BUDGETS
       </button>
 
-      {/* ── Latest transactions ── */}
+      {/* Latest transactions */}
       <div className="px-4 pb-6">
         <div className="flex items-center justify-between mb-3">
           <p className="text-slate-200 text-base font-light">Latest transactions</p>
           {recentTxs.length > 0 && (
             <span className="text-slate-400 text-sm">
-              <span className="text-white text-xl font-bold">{recentTxs.length}</span> new
+              <span className="text-white text-xl font-bold">{recentTxs.length}</span> recent
             </span>
           )}
         </div>
@@ -165,50 +178,36 @@ export default function DashboardPage() {
         ) : (
           <div className="rounded-xl overflow-hidden border border-slate-800 divide-y divide-slate-800">
             {recentTxs.map(tx => (
-              <TransactionCard key={tx.id} tx={tx} onClick={() => setSelectedTx(tx)} />
+              <TransactionCard key={tx.id} tx={tx} currency={currency} hideAmounts={hideAmounts} onClick={() => setSelectedTx(tx)} />
             ))}
           </div>
         )}
       </div>
 
-      {/* FAB */}
-      <button
-        onClick={() => setShowAdd(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-purple-500 hover:bg-purple-400 text-white rounded-full shadow-lg text-3xl flex items-center justify-center transition-colors z-20 shadow-purple-900"
-      >
+      <button onClick={() => setShowAdd(true)}
+        className="fixed bottom-20 right-4 w-14 h-14 bg-purple-500 hover:bg-purple-400 text-white rounded-full shadow-lg text-3xl flex items-center justify-center transition-colors z-20 shadow-purple-900">
         +
       </button>
 
       {showAdd && (
-        <AddTransactionModal
-          categories={categories}
-          currency={currency}
-          onClose={() => setShowAdd(false)}
-          onSave={handleAddTx}
-        />
+        <AddTransactionModal categories={categories} currency={currency}
+          onClose={() => setShowAdd(false)} onSave={handleAddTx} />
       )}
       {selectedTx && (
-        <TransactionDetailModal
-          tx={selectedTx}
-          categories={categories}
-          onClose={() => setSelectedTx(null)}
-          onUpdated={loadData}
-        />
+        <TransactionDetailModal tx={selectedTx} categories={categories}
+          currency={currency} hideAmounts={hideAmounts}
+          onClose={() => setSelectedTx(null)} onUpdated={loadData} />
       )}
     </div>
   )
 }
 
-// ── SVG Line Chart ────────────────────────────────────────────────────────────
-
-function ExpenseChart({ data, avg }: {
-  data: { month: number; year: number; debit: number }[]
-  avg: number
-}) {
+function ExpenseChart({ data, avg }: { data: { month: number; year: number; debit: number }[]; avg: number }) {
   const W = 360, H = 160
   const PADL = 8, PADR = 28, PADT = 28, PADB = 22
   const plotW = W - PADL - PADR
   const plotH = H - PADT - PADB
+  const MONTH_SHORT = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 
   const values = data.map(d => d.debit)
   const maxVal = Math.max(...values, avg) * 1.2 || 1000
@@ -229,24 +228,15 @@ function ExpenseChart({ data, avg }: {
           <stop offset="100%" stopColor="#9333ea" stopOpacity="0.05" />
         </linearGradient>
       </defs>
-
-      {/* Area fill */}
       <polygon points={areaPts} fill="url(#cg)" />
-
-      {/* Avg dashed line */}
       {avg > 0 && <>
         <line x1={PADL} y1={avgY} x2={W - PADR} y2={avgY}
           stroke="rgba(255,255,255,0.35)" strokeWidth="1" strokeDasharray="4,3" />
-        <text x={PADL + 3} y={Number(avgY) - 4}
-          fill="rgba(255,255,255,0.45)" fontSize="8">
+        <text x={PADL + 3} y={Number(avgY) - 4} fill="rgba(255,255,255,0.45)" fontSize="8">
           Avg {Math.round(avg).toLocaleString()}
         </text>
       </>}
-
-      {/* White line */}
       <polyline points={linePts} fill="none" stroke="white" strokeWidth="2" strokeLinejoin="round" />
-
-      {/* Points + labels + month names */}
       {values.map((v, i) => {
         const cx = xAt(i), cy = yAt(v)
         const label = v > 0 ? Math.round(v).toLocaleString() : '0'
@@ -254,9 +244,7 @@ function ExpenseChart({ data, avg }: {
         const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle'
         return (
           <g key={i}>
-            <text x={cx} y={cy - 7} textAnchor={anchor} fill="white" fontSize="8.5" fontWeight="600">
-              {label}
-            </text>
+            <text x={cx} y={cy - 7} textAnchor={anchor} fill="white" fontSize="8.5" fontWeight="600">{label}</text>
             <circle cx={cx} cy={cy} r="3.5" fill="white" />
             <text x={cx} y={H - 5} textAnchor={anchor} fill="rgba(255,255,255,0.5)" fontSize="8.5">
               {MONTH_SHORT[data[i].month - 1]}
