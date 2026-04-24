@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format, subMonths, setDate, addMonths } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
@@ -22,20 +22,22 @@ export default function DashboardPage() {
 
   const [currentDate] = useState(new Date())
 
-  const currentDayOfMonth = currentDate.getDate()
-  let periodStartDate: Date
-  let periodEndDate: Date
-
-  if (currentDayOfMonth >= startDay) {
-    periodStartDate = setDate(currentDate, startDay)
-  } else {
-    periodStartDate = setDate(subMonths(currentDate, 1), startDay)
-  }
-
-  periodEndDate = setDate(addMonths(periodStartDate, 1), startDay - 1)
-
-  const month = periodStartDate.getMonth() + 1
-  const year = periodStartDate.getFullYear()
+  const { periodStartDate, periodEndDate, month, year } = useMemo(() => {
+    const currentDayOfMonth = currentDate.getDate()
+    let pStart: Date
+    if (currentDayOfMonth >= startDay) {
+      pStart = setDate(currentDate, startDay)
+    } else {
+      pStart = setDate(subMonths(currentDate, 1), startDay)
+    }
+    const pEnd = setDate(addMonths(pStart, 1), startDay - 1)
+    return {
+      periodStartDate: pStart,
+      periodEndDate: pEnd,
+      month: pStart.getMonth() + 1,
+      year: pStart.getFullYear()
+    }
+  }, [currentDate, startDay])
 
   const [summary, setSummary] = useState({ totalDebit: 0, totalCredit: 0, netSavings: 0 })
   const [prevSummary, setPrevSummary] = useState({ totalDebit: 0, totalCredit: 0, netSavings: 0 })
@@ -54,53 +56,59 @@ export default function DashboardPage() {
   })
 
   const loadData = useCallback(async () => {
-    if (!user) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
-    const [sumRes, catsRes, txsRes, monthlyRes] = await Promise.all([
-      getMonthlySummary(user.id, month, year, startDay),
-      getCategories(user.id),
-      getTransactions(user.id, { month, year }, 5, 0, startDay),
-      getMonthlyTotals(user.id, periods, startDay),
-    ])
+    try {
+      const [sumRes, catsRes, txsRes, monthlyRes] = await Promise.all([
+        getMonthlySummary(user.id, month, year, startDay),
+        getCategories(user.id),
+        getTransactions(user.id, { month, year }, 5, 0, startDay),
+        getMonthlyTotals(user.id, periods, startDay),
+      ])
 
-    const allCategories = catsRes.data ?? []
-    setSummary(sumRes)
-    setCategories(allCategories)
-    setRecentTxs(txsRes.data as Transaction[] ?? [])
-    setMonthlyData(monthlyRes.map(r => ({ month: r.month, year: r.year, debit: r.debit })))
+      const allCategories = catsRes.data ?? []
+      setSummary(sumRes)
+      setCategories(allCategories)
+      setRecentTxs(txsRes.data as Transaction[] ?? [])
+      setMonthlyData(monthlyRes.map(r => ({ month: r.month, year: r.year, debit: r.debit })))
 
-    // Fetch category spending and previous month data
-    const prevMonthStart = subMonths(periodStartDate, 1)
-    const prevMonth = prevMonthStart.getMonth() + 1
-    const prevYear = prevMonthStart.getFullYear()
+      // Fetch category spending and previous month data
+      const prevMonthStart = subMonths(periodStartDate, 1)
+      const prevMonth = prevMonthStart.getMonth() + 1
+      const prevYear = prevMonthStart.getFullYear()
 
-    const [catSpendRes, prevSumRes, prevCatSpendRes] = await Promise.all([
-      getCategorySpending(user.id, month, year, allCategories, startDay),
-      getMonthlySummary(user.id, prevMonth, prevYear, startDay),
-      getCategorySpending(user.id, prevMonth, prevYear, allCategories, startDay),
-    ])
+      const [catSpendRes, prevSumRes, prevCatSpendRes] = await Promise.all([
+        getCategorySpending(user.id, month, year, allCategories, startDay),
+        getMonthlySummary(user.id, prevMonth, prevYear, startDay),
+        getCategorySpending(user.id, prevMonth, prevYear, allCategories, startDay),
+      ])
 
-    // Convert category spending to object for easier lookup
-    const catMap: { [key: string]: number } = {}
-    const prevCatMap: { [key: string]: number } = {}
+      // Convert category spending to object for easier lookup
+      const catMap: { [key: string]: number } = {}
+      const prevCatMap: { [key: string]: number } = {}
 
-    catSpendRes?.forEach((cs: any) => {
-      if (!cs.isIncome) {
-        catMap[cs.category.id] = cs.spent || 0
-      }
-    })
+      catSpendRes?.forEach((cs: any) => {
+        if (!cs.isIncome) {
+          catMap[cs.category.id] = cs.spent || 0
+        }
+      })
 
-    prevCatSpendRes?.forEach((cs: any) => {
-      if (!cs.isIncome) {
-        prevCatMap[cs.category.id] = cs.spent || 0
-      }
-    })
+      prevCatSpendRes?.forEach((cs: any) => {
+        if (!cs.isIncome) {
+          prevCatMap[cs.category.id] = cs.spent || 0
+        }
+      })
 
-    setCategorySpending(catMap)
-    setPrevCategorySpending(prevCatMap)
-    setPrevSummary(prevSumRes)
-    setLoading(false)
-  }, [user, month, year, startDay, periodStartDate])
+      setCategorySpending(catMap)
+      setPrevCategorySpending(prevCatMap)
+      setPrevSummary(prevSumRes)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, month, year, startDay, currentDate])
 
   useEffect(() => { loadData() }, [loadData])
 
