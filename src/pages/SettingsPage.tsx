@@ -610,7 +610,7 @@ function InlineEditForm({ cat, name, onNameChange, color, onColorChange, isIncom
   name: string; onNameChange: (v: string) => void
   color: string; onColorChange: (v: string) => void
   isIncome: boolean; onIsIncomeChange: (v: boolean) => void
-  recurrenceType: 'none' | 'one_time' | 'monthly' | 'weekly'; onRecurrenceTypeChange: (v: 'none' | 'one_time' | 'monthly' | 'weekly') => void
+  recurrenceType: 'none' | 'one_time' | 'monthly' | 'weekly' | 'yearly'; onRecurrenceTypeChange: (v: 'none' | 'one_time' | 'monthly' | 'weekly' | 'yearly') => void
   saving: boolean
   onSave: () => void
   onCancel: () => void
@@ -689,3 +689,4 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
     </button>
   )
 }
+  
