@@ -18,6 +18,8 @@ export default function AnalysisPage() {
   const [categoryBreakdown, setCategoryBreakdown] = useState<Array<{ name: string; amount: number; percentage: number }>>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [ytdStats, setYtdStats] = useState({ totalIncome: 0, totalExpenses: 0, totalSavings: 0, avgMonthlyExpenses: 0 })
+  const [categoryTimeView, setCategoryTimeView] = useState<'total' | 'monthly'>('total')
+  const [categoryMonthlyBreakdown, setCategoryMonthlyBreakdown] = useState<Array<{ month: string; categories: Array<{ name: string; amount: number }> }>>([])
 
   const now = new Date()
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -60,17 +62,34 @@ export default function AnalysisPage() {
 
         // Get category spending for all months (YTD), not just current month
         let allCatSpending: { [key: string]: { name: string; spent: number } } = {}
+        const monthlyBreakdown: Array<{ month: string; categories: Array<{ name: string; amount: number }> }> = []
+
         for (const { month, year } of months) {
           const catSpend = await getCategorySpending(user.id, month, year, cats, startDay)
+          const monthCats: { [key: string]: number } = {}
+
           catSpend?.forEach((cs: any) => {
             if (!cs.isIncome && (cs.spent ?? 0) > 0) {
               if (!allCatSpending[cs.category.id]) {
                 allCatSpending[cs.category.id] = { name: cs.category.name, spent: 0 }
               }
               allCatSpending[cs.category.id].spent += cs.spent ?? 0
+              monthCats[cs.category.name] = (monthCats[cs.category.name] ?? 0) + (cs.spent ?? 0)
             }
           })
+
+          // Store monthly breakdown
+          const monthLabel = new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+          monthlyBreakdown.push({
+            month: monthLabel,
+            categories: Object.entries(monthCats)
+              .map(([name, amount]) => ({ name, amount }))
+              .sort((a, b) => b.amount - a.amount)
+              .slice(0, 5) // Top 5 per month
+          })
         }
+
+        setCategoryMonthlyBreakdown(monthlyBreakdown.reverse())
 
         const breakdown = Object.values(allCatSpending)
           .sort((a, b) => b.spent - a.spent)
@@ -336,26 +355,72 @@ export default function AnalysisPage() {
 
         {/* Category Breakdown */}
         <div className="bg-surface rounded-lg p-6 border border-slate-700">
-          <h2 className="text-lg font-bold text-primary mb-4">Top Spending Categories</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-primary">Top Spending Categories</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCategoryTimeView('total')}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  categoryTimeView === 'total'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-slate-800 text-secondary hover:bg-slate-700'
+                }`}
+              >
+                Total
+              </button>
+              <button
+                onClick={() => setCategoryTimeView('monthly')}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  categoryTimeView === 'monthly'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-slate-800 text-secondary hover:bg-slate-700'
+                }`}
+              >
+                Monthly
+              </button>
+            </div>
+          </div>
           <div className="space-y-3">
-            {categoryBreakdown.length > 0 ? (
-              categoryBreakdown.map((cat, idx) => (
-                <div key={idx}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-secondary text-sm">{cat.name}</span>
-                    <span className="text-primary font-semibold text-sm">{cat.percentage.toFixed(1)}%</span>
+            {categoryTimeView === 'total' ? (
+              categoryBreakdown.length > 0 ? (
+                categoryBreakdown.map((cat, idx) => (
+                  <div key={idx}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-secondary text-sm">{cat.name}</span>
+                      <span className="text-primary font-semibold text-sm">{cat.percentage.toFixed(1)}%</span>
+                    </div>
+                    <div className="bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-full"
+                        style={{ width: `${cat.percentage}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-secondary mt-1">{display(cat.amount)}</div>
                   </div>
-                  <div className="bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-full"
-                      style={{ width: `${cat.percentage}%` }}
-                    />
-                  </div>
-                  <div className="text-xs text-secondary mt-1">{display(cat.amount)}</div>
-                </div>
-              ))
+                ))
+              ) : (
+                <p className="text-secondary text-sm">No spending data available</p>
+              )
             ) : (
-              <p className="text-secondary text-sm">No spending data available</p>
+              <div className="space-y-4">
+                {categoryMonthlyBreakdown.length > 0 ? (
+                  categoryMonthlyBreakdown.map((monthData, idx) => (
+                    <div key={idx} className="border-b border-slate-700 pb-4 last:border-0 last:pb-0">
+                      <div className="text-sm font-semibold text-primary mb-2">{monthData.month}</div>
+                      <div className="space-y-2 ml-2">
+                        {monthData.categories.map((cat, catIdx) => (
+                          <div key={catIdx} className="flex justify-between items-center text-xs">
+                            <span className="text-secondary">{cat.name}</span>
+                            <span className="text-primary font-semibold">{display(cat.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-secondary text-sm">No monthly spending data available</p>
+                )}
+              </div>
             )}
           </div>
         </div>
