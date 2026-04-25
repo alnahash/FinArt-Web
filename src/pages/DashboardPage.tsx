@@ -157,6 +157,60 @@ export default function DashboardPage() {
   const spendingChange = summary.totalDebit - prevSummary.totalDebit
   const spendingChangePercent = prevSummary.totalDebit > 0 ? Math.round((spendingChange / prevSummary.totalDebit) * 100) : 0
 
+  // Calculate financial health score
+  const healthScore = useMemo(() => {
+    let score = 50
+    if (summary.totalCredit > 0) score += 15
+    if (summary.netSavings >= 0) score += 25
+    if (!overBudget && monthlyBudget > 0) score += 10
+    if (savingsRate >= 20) score += 10 // bonus for good savings rate
+    return Math.min(100, score)
+  }, [summary, overBudget, monthlyBudget, savingsRate])
+
+  // Generate recommendations
+  const recommendations = useMemo(() => {
+    const recs: string[] = []
+
+    if (summary.totalCredit === 0 && summary.totalDebit > 0) {
+      recs.push('💡 No income recorded this month. Track all income sources.')
+    }
+    if (savingsRate < 10 && summary.totalCredit > 0) {
+      recs.push('💡 Savings rate is low. Consider reducing discretionary spending.')
+    }
+    if (spendingChangePercent > 20) {
+      recs.push(`⚠️ Spending increased ${spendingChangePercent}% from last month. Review expense categories.`)
+    } else if (spendingChangePercent < -20) {
+      recs.push(`✅ Great job! Spending decreased ${Math.abs(spendingChangePercent)}% compared to last month.`)
+    }
+    if (topCategories.length > 0 && topCategories[0].amount > (summary.totalDebit * 0.4)) {
+      recs.push(`🎯 ${topCategories[0].name} is ${Math.round((topCategories[0].amount / summary.totalDebit) * 100)}% of your spending. Consider optimizing.`)
+    }
+    if (!overBudget && monthlyBudget > 0 && budgetPct >= 80) {
+      recs.push('⚠️ You\'re at 80% of your budget. Slow down spending to stay within limits.')
+    }
+    if (overBudget) {
+      recs.push(`❌ You're ${Math.round(budgetPct - 100)}% over budget. Review spending in remaining days.`)
+    }
+    if (summary.netSavings > 0) {
+      recs.push(`💰 You saved ${fmtCurrency(summary.netSavings, currency)} this month. Keep it up!`)
+    }
+
+    return recs.slice(0, 3)
+  }, [summary, savingsRate, spendingChangePercent, topCategories, overBudget, monthlyBudget, budgetPct])
+
+  // Get spending volatility indicator
+  const spendingVolatility = useMemo(() => {
+    if (monthlyData.length < 2) return 'insufficient data'
+    const debits = monthlyData.map(d => d.debit)
+    const mean = debits.reduce((a, b) => a + b, 0) / debits.length
+    const variance = debits.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / debits.length
+    const stdDev = Math.sqrt(variance)
+    const cv = mean > 0 ? (stdDev / mean) * 100 : 0
+    if (cv < 20) return 'stable'
+    if (cv < 50) return 'moderate'
+    return 'volatile'
+  }, [monthlyData])
+
   return (
     <div className="bg-app min-h-full">
 
@@ -306,7 +360,76 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Additional Insights */}
+          {/* Financial Health Score */}
+          <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+            <p className="text-slate-400 text-xs font-medium mb-3">FINANCIAL HEALTH</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-500 text-xs mb-1">Overall Score</p>
+                <p className="text-2xl font-bold text-indigo-400">{healthScore}</p>
+              </div>
+              <div className="flex-1 ml-6">
+                <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      healthScore >= 80 ? 'bg-green-500' :
+                      healthScore >= 60 ? 'bg-blue-500' :
+                      healthScore >= 40 ? 'bg-yellow-500' :
+                      'bg-red-500'
+                    }`}
+                    style={{ width: `${healthScore}%` }}
+                  />
+                </div>
+                <p className="text-slate-500 text-xs mt-1">
+                  {healthScore >= 80 ? '💚 Excellent' :
+                   healthScore >= 60 ? '💙 Good' :
+                   healthScore >= 40 ? '💛 Fair' :
+                   '❤️ Needs Improvement'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Personalized Recommendations */}
+          {recommendations.length > 0 && (
+            <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+              <p className="text-slate-400 text-xs font-medium mb-3">RECOMMENDATIONS</p>
+              <div className="space-y-2">
+                {recommendations.map((rec, i) => (
+                  <p key={i} className="text-slate-300 text-sm leading-relaxed">
+                    {rec}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Spending Analysis */}
+          <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+            <p className="text-slate-400 text-xs font-medium mb-3">SPENDING ANALYSIS</p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Pattern</span>
+                <span className="text-slate-300 font-semibold capitalize">
+                  {spendingVolatility === 'stable' ? '📊 Stable' :
+                   spendingVolatility === 'moderate' ? '📈 Moderate' :
+                   '🎢 Volatile'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Trend</span>
+                <span className={`font-semibold ${spendingChange > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                  {spendingChange > 0 ? '📈 Increasing' : spendingChange < 0 ? '📉 Decreasing' : '➡️ Stable'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Monthly Avg</span>
+                <span className="text-slate-300 font-semibold">{mask(avg)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Metrics */}
           <div className="bg-surface rounded-xl p-4 border border-slate-700">
             <p className="text-slate-400 text-xs font-medium mb-3">KEY METRICS</p>
             <div className="space-y-2 text-sm">
