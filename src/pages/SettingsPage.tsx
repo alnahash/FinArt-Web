@@ -612,7 +612,7 @@ export default function SettingsPage() {
 
 function Section({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-4 my-3 rounded-2xl overflow-hidden divide-y" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', border: '1px solid var(--border)' }}>
+    <div className="mx-4 my-4 rounded-2xl overflow-hidden divide-y shadow-lg hover:shadow-xl transition-shadow duration-300" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', border: '1px solid var(--border)' }}>
       <div className="divide-y" style={{ borderColor: 'var(--border)' }}>{children}</div>
     </div>
   )
@@ -625,13 +625,13 @@ function SettingRow({ icon, title, subtitle, children }: {
   children?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-4">
-      <span className="text-xl w-7 text-center">{icon}</span>
+    <div className="flex items-center gap-4 px-4 py-4 hover:bg-opacity-50 transition-colors duration-200" style={{ backgroundColor: 'transparent', backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.02))' }}>
+      <span className="text-2xl w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-lg" style={{ backgroundColor: 'rgba(99,102,241,0.1)' }}>{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>{title}</p>
+        <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{title}</p>
         {subtitle && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-3)' }}>{subtitle}</p>}
       </div>
-      {children && <div className="flex-shrink-0">{children}</div>}
+      {children && <div className="flex-shrink-0 ml-2">{children}</div>}
     </div>
   )
 }
@@ -649,8 +649,8 @@ function RecurrenceBadge({ type }: { type: string }) {
   if (!info) return null
   return (
     <span
-      className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-      style={{ backgroundColor: info.color + '22', color: info.color }}
+      className="text-xs px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap shadow-sm hover:shadow-md transition-shadow duration-200"
+      style={{ backgroundColor: info.color + '15', color: info.color, border: `1px solid ${info.color}33` }}
     >
       {info.label}
     </span>
@@ -669,40 +669,40 @@ function InlineEditForm({ cat, name, onNameChange, color, onColorChange, icon, o
   const [showPicker, setShowPicker] = useState(false)
   const isMain = !cat.parent_id
   return (
-    <div className={`p-3 space-y-2 ${indent ? 'pl-8' : ''}`} style={{ backgroundColor: 'var(--bg-muted)', borderLeft: `4px solid ${color}` }}>
+    <div className={`p-4 space-y-3 ${indent ? 'pl-8' : ''} rounded-lg`} style={{ backgroundColor: 'var(--bg-muted)', borderLeft: `3px solid ${color}`, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)' }}>
       <div className="flex gap-2 items-center">
         <input className="input flex-1 min-w-0 text-sm truncate" value={name} onChange={e => onNameChange(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel() }} autoFocus />
         <input type="color" value={color} onChange={e => onColorChange(e.target.value)}
-          className="w-10 h-10 rounded-xl border cursor-pointer p-1 flex-shrink-0"
-          style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}
+          className="w-10 h-10 rounded-lg border-2 cursor-pointer p-1 flex-shrink-0 hover:ring-2 transition-all duration-200"
+          style={{ backgroundColor: 'var(--bg-input)', borderColor: color }}
           title="Change color" />
       </div>
       {showPicker && <IconPicker selected={icon} onSelect={e => { onIconChange(e); setShowPicker(false) }} />}
       {isMain && (
-        <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex rounded-lg overflow-hidden border-2 gap-0.5 p-1" style={{ borderColor: 'var(--border)', backgroundColor: 'rgba(0,0,0,0.1)' }}>
           <button onClick={() => onIsIncomeChange(false)}
-            className={`flex-1 py-1.5 text-xs font-semibold transition-colors ${!isIncome ? 'bg-red-500/20 text-red-400' : 'text-secondary'}`}
-            style={isIncome ? { backgroundColor: 'var(--bg-input)' } : {}}>📉 Expense</button>
+            className={`flex-1 py-2 text-xs font-bold transition-all duration-200 rounded-md ${!isIncome ? 'bg-red-500/30 text-red-300 shadow-md' : 'text-secondary'}`}
+            style={isIncome ? { backgroundColor: 'transparent' } : {}}>📉 Expense</button>
           <button onClick={() => onIsIncomeChange(true)}
-            className={`flex-1 py-1.5 text-xs font-semibold transition-colors ${isIncome ? 'bg-green-500/20 text-green-400' : 'text-secondary'}`}
-            style={!isIncome ? { backgroundColor: 'var(--bg-input)' } : {}}>📈 Income</button>
+            className={`flex-1 py-2 text-xs font-bold transition-all duration-200 rounded-md ${isIncome ? 'bg-green-500/30 text-green-300 shadow-md' : 'text-secondary'}`}
+            style={!isIncome ? { backgroundColor: 'transparent' } : {}}>📈 Income</button>
         </div>
       )}
       {!isMain && (
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-5 gap-1.5">
           {(['none', 'one_time', 'weekly', 'monthly', 'yearly'] as const).map(t => (
             <button key={t} onClick={() => onRecurrenceTypeChange(t)}
-              className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${recurrenceType === t ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'border-transparent text-secondary'}`}
+              className={`py-2 rounded-lg text-xs font-bold border-2 transition-all duration-200 hover:shadow-md ${recurrenceType === t ? 'bg-purple-500/25 border-purple-500 text-purple-300 shadow-md' : 'border-transparent text-secondary hover:bg-opacity-50'}`}
               style={recurrenceType !== t ? { backgroundColor: 'var(--bg-input)' } : {}}>
               {t === 'none' ? 'NA' : t === 'one_time' ? '1×' : t === 'weekly' ? '🔁Wk' : t === 'monthly' ? '🔁Mo' : '📅Yr'}
             </button>
           ))}
         </div>
       )}
-      <div className="flex gap-2">
-        <button onClick={onSave} disabled={saving} className="btn-primary flex-1 text-xs py-2">{saving ? 'Saving…' : '✓ Save'}</button>
-        <button onClick={onCancel} className="flex-1 text-xs py-2 rounded-xl border text-secondary" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-input)' }}>Cancel</button>
+      <div className="flex gap-2 pt-1">
+        <button onClick={onSave} disabled={saving} className="btn-primary flex-1 text-xs py-2 font-bold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed">{saving ? 'Saving…' : '✓ Save'}</button>
+        <button onClick={onCancel} className="flex-1 text-xs py-2 rounded-lg border-2 text-secondary font-medium transition-all duration-200 hover:shadow-md" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-input)' }}>Cancel</button>
       </div>
     </div>
   )
