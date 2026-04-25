@@ -537,7 +537,7 @@ export default function SettingsPage() {
                                   <span className="text-xs tabular-nums flex-shrink-0" style={{ color: cat.color }}>{groupIdx + 1}.{childIdx + 1}</span>
                                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
                                   <span className="text-sm flex-1" style={{ color: 'var(--text-1)' }}>{cat.name}</span>
-                                  {cat.recurrence_type !== 'none' && <RecurrenceBadge type={cat.recurrence_type} />}
+                                  <RecurrenceBadge type={cat.recurrence_type} />
                                   <button
                                     onClick={() => handleStartEdit(cat)}
                                     className="text-xs opacity-0 group-hover:opacity-100 hover:text-purple-400 transition-colors"
@@ -637,6 +637,7 @@ function SettingRow({ icon, title, subtitle, children }: {
 }
 
 const RECURRENCE_LABELS: Record<string, { label: string; color: string }> = {
+  none:     { label: 'NA', color: '#94a3b8' },
   one_time: { label: 'One Time', color: '#f59e0b' },
   weekly:   { label: 'Weekly',   color: '#10b981' },
   monthly:  { label: 'Monthly',  color: '#6366f1' },
@@ -694,7 +695,7 @@ function InlineEditForm({ cat, name, onNameChange, color, onColorChange, icon, o
             <button key={t} onClick={() => onRecurrenceTypeChange(t)}
               className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${recurrenceType === t ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'border-transparent text-secondary'}`}
               style={recurrenceType !== t ? { backgroundColor: 'var(--bg-input)' } : {}}>
-              {t === 'none' ? '—' : t === 'one_time' ? '1×' : t === 'weekly' ? '🔁Wk' : t === 'monthly' ? '🔁Mo' : '📅Yr'}
+              {t === 'none' ? 'NA' : t === 'one_time' ? '1×' : t === 'weekly' ? '🔁Wk' : t === 'monthly' ? '🔁Mo' : '📅Yr'}
             </button>
           ))}
         </div>
