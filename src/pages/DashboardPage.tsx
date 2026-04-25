@@ -225,7 +225,7 @@ export default function DashboardPage() {
         {!isSameMonth(currentDate, new Date()) && (
           <button
             onClick={() => setCurrentDate(new Date())}
-            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded-lg bg-indigo-500/10 transition-colors"
+            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded-lg bg-indigo-500/10 transition-all duration-200 hover:bg-indigo-500/20 active:scale-95"
           >Today</button>
         )}
         <button
@@ -280,7 +280,7 @@ export default function DashboardPage() {
 
         {/* Chart */}
         {!loading && monthlyData.length > 0 && (
-          <div className="rounded-xl overflow-hidden bg-surface">
+          <div className="rounded-xl overflow-hidden bg-surface transition-all duration-300 hover:shadow-lg">
             <ExpenseChart data={monthlyData} avg={avg} />
           </div>
         )}
@@ -288,7 +288,7 @@ export default function DashboardPage() {
       </div>
 
       <button onClick={() => navigate('/transactions')}
-        className="mx-4 mb-6 text-purple-400 text-xs font-bold tracking-[0.15em] uppercase">
+        className="mx-4 mb-6 text-purple-400 text-xs font-bold tracking-[0.15em] uppercase hover:text-purple-300 transition-colors duration-200 active:scale-95">
         VIEW DETAILS
       </button>
 
@@ -298,7 +298,7 @@ export default function DashboardPage() {
           <p className="text-slate-200 text-base font-light mb-4">Insights</p>
 
           {/* Income vs Expenses */}
-          <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+          <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700 transition-all duration-300 hover:shadow-lg hover:border-slate-600">
             <p className="text-slate-400 text-xs font-medium mb-3">INCOME vs EXPENSES</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -324,7 +324,7 @@ export default function DashboardPage() {
 
           {/* Top Categories */}
           {topCategories.length > 0 && (
-            <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+            <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700 transition-all duration-300 hover:shadow-lg hover:border-slate-600">
               <p className="text-slate-400 text-xs font-medium mb-3">TOP EXPENSE CATEGORIES</p>
               <p className="text-slate-300 text-sm mb-3">
                 Most of your expenses are{' '}
@@ -339,7 +339,7 @@ export default function DashboardPage() {
 
           {/* Month-over-Month Changes */}
           {spendingChange !== 0 && (
-            <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700">
+            <div className="bg-surface rounded-xl p-4 mb-4 border border-slate-700 transition-all duration-300 hover:shadow-lg hover:border-slate-600">
               <p className="text-slate-400 text-xs font-medium mb-3">COMPARED TO LAST MONTH</p>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
