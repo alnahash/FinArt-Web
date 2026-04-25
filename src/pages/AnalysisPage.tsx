@@ -58,18 +58,30 @@ export default function AnalysisPage() {
 
         setMonthlyData(monthData)
 
-        const catSpending = await getCategorySpending(user.id, getMonth(now) + 1, getYear(now), cats, startDay)
-        const breakdown = (catSpending ?? [])
-          .filter(cs => !cs.isIncome && (cs.spent ?? 0) > 0)
-          .sort((a, b) => (b.spent ?? 0) - (a.spent ?? 0))
+        // Get category spending for all months (YTD), not just current month
+        let allCatSpending: { [key: string]: { name: string; spent: number } } = {}
+        for (const { month, year } of months) {
+          const catSpend = await getCategorySpending(user.id, month, year, cats, startDay)
+          catSpend?.forEach((cs: any) => {
+            if (!cs.isIncome && (cs.spent ?? 0) > 0) {
+              if (!allCatSpending[cs.category.id]) {
+                allCatSpending[cs.category.id] = { name: cs.category.name, spent: 0 }
+              }
+              allCatSpending[cs.category.id].spent += cs.spent ?? 0
+            }
+          })
+        }
+
+        const breakdown = Object.values(allCatSpending)
+          .sort((a, b) => b.spent - a.spent)
           .slice(0, 8)
 
-        const totalCatSpending = breakdown.reduce((s, c) => s + (c.spent ?? 0), 0)
+        const totalCatSpending = breakdown.reduce((s, c) => s + c.spent, 0)
         setCategoryBreakdown(
           breakdown.map(c => ({
-            name: c.category.name,
-            amount: c.spent ?? 0,
-            percentage: totalCatSpending > 0 ? ((c.spent ?? 0) / totalCatSpending) * 100 : 0
+            name: c.name,
+            amount: c.spent,
+            percentage: totalCatSpending > 0 ? (c.spent / totalCatSpending) * 100 : 0
           }))
         )
 
@@ -184,6 +196,18 @@ export default function AnalysisPage() {
                 <div
                   className="bg-red-500 h-full"
                   style={{ width: ytdStats.totalIncome > 0 ? `${(ytdStats.totalExpenses / ytdStats.totalIncome) * 100}%` : '0%' }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-secondary text-sm">Savings</span>
+                <span className={`font-semibold ${ytdStats.totalSavings >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>{display(ytdStats.totalSavings)}</span>
+              </div>
+              <div className="bg-slate-800 rounded-full h-3 overflow-hidden">
+                <div
+                  className={`h-full ${ytdStats.totalSavings >= 0 ? 'bg-cyan-500' : 'bg-red-500'}`}
+                  style={{ width: ytdStats.totalIncome > 0 ? `${(ytdStats.totalSavings / ytdStats.totalIncome) * 100}%` : '0%' }}
                 />
               </div>
             </div>
