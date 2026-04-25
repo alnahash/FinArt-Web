@@ -6,6 +6,53 @@ import { getCategories, getCategorySpending, upsertBudget, getBudgets, buildCate
 import { fmt as fmtCurrency } from '../lib/currency'
 import type { CategorySpending, CategoryGroup } from '../types'
 
+function getCategoryIcon(name: string): string {
+  const lower = name.toLowerCase()
+  const iconMap: Record<string, string> = {
+    'coffee': '☕', 'cafe': '☕', 'café': '☕',
+    'restaurant': '🍽️', 'food': '🍽️', 'dining': '🍽️',
+    'shopping': '🛍️', 'retail': '🛍️', 'clothes': '👕',
+    'travel': '🚗', 'transport': '🚗', 'gas': '⛽', 'fuel': '⛽', 'parking': '🅿️',
+    'health': '⚕️', 'medical': '⚕️', 'pharmacy': '💊', 'doctor': '🏥',
+    'insurance': '📋', 'bills': '📄', 'utilities': '💡', 'electricity': '💡',
+    'entertainment': '🎬', 'movies': '🎬', 'games': '🎮', 'gym': '💪',
+    'supermarket': '🛒', 'groceries': '🥬', 'market': '🏪',
+    'subscription': '📺', 'netflix': '📺', 'music': '🎵', 'spotify': '🎵',
+    'art': '🎨', 'studio': '🎨', 'craft': '✏️',
+    'education': '📚', 'books': '📖', 'course': '🎓',
+    'pet': '🐶', 'vet': '🐾',
+  }
+  for (const [key, icon] of Object.entries(iconMap)) {
+    if (lower.includes(key)) return icon
+  }
+  return '💰'
+}
+
+function getRecurrenceBadge(recurrenceType: string | null | undefined): { text: string; color: string; bgColor: string } {
+  switch (recurrenceType) {
+    case 'monthly':
+      return { text: 'Monthly', color: 'text-blue-400', bgColor: 'bg-blue-500/20' }
+    case 'yearly':
+      return { text: 'Yearly', color: 'text-purple-400', bgColor: 'bg-purple-500/20' }
+    case 'one_time':
+      return { text: 'Once', color: 'text-orange-400', bgColor: 'bg-orange-500/20' }
+    case 'weekly':
+      return { text: 'Weekly', color: 'text-green-400', bgColor: 'bg-green-500/20' }
+    case 'none':
+    case null:
+    case undefined:
+      return { text: 'NA', color: 'text-slate-400', bgColor: 'bg-slate-700/40' }
+    default:
+      return { text: 'NA', color: 'text-slate-400', bgColor: 'bg-slate-700/40' }
+  }
+}
+
+function getBudgetStatusColor(percentage: number): string {
+  if (percentage >= 90) return 'text-red-400'
+  if (percentage >= 70) return 'text-yellow-400'
+  return 'text-green-400'
+}
+
 export default function BudgetPage() {
   const { user } = useAuth()
   const profile = useProfile()
@@ -195,6 +242,11 @@ export default function BudgetPage() {
             (recurrenceFilter === 'all' || s.category.recurrence_type === recurrenceFilter))
           const isIncomeGroup = filteredChildren.some(c => c.is_income)
           const groupPct = totals.budget > 0 ? Math.min((totals.spent / totals.budget) * 100, 100) : 0
+          const statusColor = getBudgetStatusColor(groupPct)
+          const budgetsWithValues = filteredChildren.filter(c => {
+            const cs = activeChildren.find(s => s.category.id === c.id)
+            return (cs?.budget ?? 0) > 0
+          })
 
           return (
             <div key={group.id} className="rounded-2xl overflow-hidden border border-slate-700/60 bg-slate-800/40">
@@ -204,7 +256,14 @@ export default function BudgetPage() {
                 <div className="flex-1 flex items-center gap-2.5 min-w-0 text-left">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
                   <span className="font-bold text-sm text-slate-100 tracking-wide uppercase">{group.name}</span>
-                  <span className="text-xs text-slate-500 font-normal normal-case">({filteredChildren.length})</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-500 font-normal normal-case">({filteredChildren.length})</span>
+                    {!isIncomeGroup && totals.budget > 0 && (
+                      <span className={`text-xs font-medium ${statusColor}`}>
+                        {groupPct >= 90 ? '🔴' : groupPct >= 70 ? '🟡' : '🟢'}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right flex-shrink-0">
                   {(totals.spent > 0 || totals.budget > 0) && (
@@ -213,7 +272,12 @@ export default function BudgetPage() {
                         {isIncomeGroup ? '+' : ''}{fmtCurrency(totals.spent, currency)}
                       </p>
                       {totals.budget > 0 && !isIncomeGroup && (
-                        <p className="text-xs text-slate-500">of {fmtCurrency(totals.budget, currency)}</p>
+                        <>
+                          <p className="text-xs text-slate-500">of {fmtCurrency(totals.budget, currency)}</p>
+                          {totals.spent < totals.budget && (
+                            <p className="text-xs text-green-400">remaining: {fmtCurrency(totals.budget - totals.spent, currency)}</p>
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -222,7 +286,7 @@ export default function BudgetPage() {
               </button>
 
               {totals.budget > 0 && !isIncomeGroup && (
-                <div className="h-1.5 bg-slate-700 mx-4 rounded-full overflow-hidden -mt-1 mb-1">
+                <div className="h-2 bg-slate-700 mx-4 rounded-full overflow-hidden -mt-1 mb-1">
                   <div
                     className={`h-full rounded-full transition-all ${groupPct >= 90 ? 'bg-red-500' : groupPct >= 70 ? 'bg-yellow-400' : 'bg-indigo-500'}`}
                     style={{ width: `${groupPct}%` }}
@@ -238,14 +302,20 @@ export default function BudgetPage() {
                     const budget = cs?.budget ?? 0
                     const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0
                     const isLast = idx === filteredChildren.length - 1
+                    const badge = getRecurrenceBadge(cat.recurrence_type)
+                    const icon = getCategoryIcon(cat.name)
+                    const statusColor = getBudgetStatusColor(pct)
 
                     return (
                       <div key={cat.id}
-                        className={`px-4 py-3 ${!isLast ? 'border-b border-slate-700/30' : ''} bg-slate-900/20`}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="w-5 flex-shrink-0" />
+                        className={`px-4 py-3.5 ${!isLast ? 'border-b border-slate-700/30' : ''} ${idx % 2 === 0 ? 'bg-slate-900/20' : 'bg-slate-900/10'} transition-colors hover:bg-slate-900/40`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-base flex-shrink-0">{icon}</span>
                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
                           <span className="text-sm text-slate-200 flex-1 font-medium">{cat.name}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color} ${badge.bgColor}`}>
+                            {badge.text}
+                          </span>
                           {editingId === cat.id ? (
                             <div className="flex items-center gap-1.5">
                               <input
@@ -264,8 +334,15 @@ export default function BudgetPage() {
                                 <span className={`text-sm font-medium ${cat.is_income ? 'text-green-400' : spent > 0 ? 'text-slate-100' : 'text-slate-500'}`}>
                                   {cat.is_income ? '+' : ''}{fmtCurrency(spent, currency)}
                                 </span>
-                                {budget > 0 && (
-                                  <span className="text-slate-500 text-xs ml-1">/ {fmtCurrency(budget, currency)}</span>
+                                {budget > 0 ? (
+                                  <>
+                                    <span className="text-slate-500 text-xs ml-1">/ {fmtCurrency(budget, currency)}</span>
+                                    {spent < budget && (
+                                      <p className="text-xs text-green-400">+{fmtCurrency(budget - spent, currency)}</p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-slate-500 text-xs ml-1 italic">Set budget</span>
                                 )}
                               </div>
                               <button onClick={() => { setEditingId(cat.id); setEditValue(String(budget || '')) }}
@@ -274,12 +351,18 @@ export default function BudgetPage() {
                           )}
                         </div>
                         {budget > 0 && !cat.is_income && (
-                          <div className="ml-9 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-400' : 'bg-green-500'}`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
+                          <>
+                            <div className="ml-0 h-2 bg-slate-700 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-400' : 'bg-green-500'}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500 flex justify-between">
+                              <span>{Math.round(pct)}% used</span>
+                              {pct >= 90 && <span className="text-red-400">⚠️ Almost exhausted</span>}
+                            </div>
+                          </>
                         )}
                       </div>
                     )
