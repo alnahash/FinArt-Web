@@ -123,6 +123,22 @@ export default function AnalysisPage() {
 
   const display = (amount: number) => hideAmounts ? '••••' : fmtCurrency(amount, currency)
 
+  const getCategoryIcon = (categoryName: string): string => {
+    const name = categoryName.toLowerCase()
+    if (name.includes('coffee') || name.includes('cafe') || name.includes('starbucks')) return '☕'
+    if (name.includes('restaurant') || name.includes('food') || name.includes('dining') || name.includes('takeout') || name.includes('hekma')) return '🍽️'
+    if (name.includes('shopping') || name.includes('mall') || name.includes('retail')) return '🛍️'
+    if (name.includes('travel') || name.includes('uber') || name.includes('taxi') || name.includes('transport')) return '🚗'
+    if (name.includes('health') || name.includes('medical') || name.includes('pharmacy')) return '⚕️'
+    if (name.includes('insurance') || name.includes('registration') || name.includes('insurance')) return '📋'
+    if (name.includes('utility') || name.includes('electricity') || name.includes('water') || name.includes('internet')) return '💡'
+    if (name.includes('entertainment') || name.includes('movie') || name.includes('spa')) return '🎬'
+    if (name.includes('supermarket') || name.includes('grocery') || name.includes('market')) return '🛒'
+    if (name.includes('subscription')) return '📺'
+    if (name.includes('garden') || name.includes('studio')) return '🎨'
+    return '💰'
+  }
+
   // AI-powered spending analysis and suggestions
   const generateSuggestions = useMemo(() => {
     const suggestions: Array<{ emoji: string; title: string; description: string; savingsPerMonth: number }> = []
@@ -357,23 +373,23 @@ export default function AnalysisPage() {
         <div className="bg-surface rounded-lg p-6 border border-slate-700">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-primary">Top Spending Categories</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 p-1 bg-slate-800 rounded-lg border border-slate-700">
               <button
                 onClick={() => setCategoryTimeView('total')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                className={`px-4 py-1.5 rounded text-sm font-medium transition-all ${
                   categoryTimeView === 'total'
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-slate-800 text-secondary hover:bg-slate-700'
+                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-secondary hover:text-primary'
                 }`}
               >
                 Total
               </button>
               <button
                 onClick={() => setCategoryTimeView('monthly')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                className={`px-4 py-1.5 rounded text-sm font-medium transition-all ${
                   categoryTimeView === 'monthly'
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-slate-800 text-secondary hover:bg-slate-700'
+                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-secondary hover:text-primary'
                 }`}
               >
                 Monthly
@@ -391,7 +407,7 @@ export default function AnalysisPage() {
                     </div>
                     <div className="bg-slate-800 rounded-full h-2 overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-full"
+                        className="bg-purple-500 h-full transition-all"
                         style={{ width: `${cat.percentage}%` }}
                       />
                     </div>
@@ -402,15 +418,15 @@ export default function AnalysisPage() {
                 <p className="text-secondary text-sm">No spending data available</p>
               )
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-0 -mx-2">
                 {categoryMonthlyBreakdown.length > 0 ? (
                   categoryMonthlyBreakdown.map((monthData, idx) => (
-                    <div key={idx} className="border-b border-slate-700 pb-4 last:border-0 last:pb-0">
+                    <div key={idx} className={`px-2 py-3 ${idx % 2 === 0 ? 'bg-slate-800/30' : ''}`}>
                       <div className="text-sm font-semibold text-primary mb-2">{monthData.month}</div>
                       <div className="space-y-2 ml-2">
                         {monthData.categories.map((cat, catIdx) => (
                           <div key={catIdx} className="flex justify-between items-center text-xs">
-                            <span className="text-secondary">{cat.name}</span>
+                            <span className="text-secondary">{getCategoryIcon(cat.name)} {cat.name}</span>
                             <span className="text-primary font-semibold">{display(cat.amount)}</span>
                           </div>
                         ))}
