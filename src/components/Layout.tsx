@@ -32,8 +32,8 @@ export default function Layout() {
       </header>
 
       {/* Page content */}
-      <main className="flex-1 overflow-auto pb-20 bg-app">
-        <div className="overflow-hidden h-full">
+      <main className="flex-1 overflow-hidden pb-20 bg-app flex flex-col">
+        <div className="flex-1 overflow-auto">
           <Outlet />
         </div>
       </main>
