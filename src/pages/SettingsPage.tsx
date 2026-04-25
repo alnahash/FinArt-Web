@@ -752,7 +752,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 
       {/* Animated knob */}
       <span
-        className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all duration-300 flex items-center justify-center font-bold text-xs ${
+        className={`absolute inset-y-0 my-auto w-6 h-6 rounded-full bg-white transition-all duration-300 flex items-center justify-center font-bold text-xs ${
           value
             ? 'translate-x-8 shadow-lg shadow-emerald-500/60 text-emerald-500'
             : 'translate-x-0.5 shadow-md shadow-slate-900/50 text-slate-400'
