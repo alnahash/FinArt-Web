@@ -36,7 +36,7 @@ export default function TransactionCard({ tx, categories = [], currency = 'BHD',
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700/50 transition-colors text-left ${isSelected ? 'bg-indigo-500/10' : ''}`}
     >
-      <input type="checkbox" checked={isSelected} onChange={onToggleSelect}
+      <input type="checkbox" checked={isSelected} onChange={onToggleSelect || (() => {})}
         onClick={e => e.stopPropagation()}
         className="w-4 h-4 cursor-pointer flex-shrink-0" />
 
