@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { format, subMonths, setDate, addMonths } from 'date-fns'
+import { format, subMonths, setDate, addMonths, isSameMonth } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { getMonthlySummary, getTransactions, getCategories, insertTransaction, getMonthlyTotals, getCategorySpending } from '../services/db'
@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const startDay = profile?.month_start_day ?? 1
   const navigate = useNavigate()
 
-  const [currentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(new Date())
 
   const { periodStartDate, periodEndDate, month, year } = useMemo(() => {
     const currentDayOfMonth = currentDate.getDate()
@@ -162,6 +162,23 @@ export default function DashboardPage() {
 
       <div className="flex justify-end px-4 pt-3 pb-1">
         <span className="text-slate-400 text-sm flex items-center gap-1">👤 Personal</span>
+      </div>
+
+      {/* Month selector */}
+      <div className="px-4 pt-3 pb-3 flex items-center justify-between gap-2">
+        <button className="btn-ghost" onClick={() => setCurrentDate(d => subMonths(d, 1))}>‹</button>
+        <span className="font-semibold text-slate-200 flex-1 text-center text-sm">{format(periodStartDate, 'd MMMM yyyy')} - {format(periodEndDate, 'd MMMM yyyy')}</span>
+        {!isSameMonth(currentDate, new Date()) && (
+          <button
+            onClick={() => setCurrentDate(new Date())}
+            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded-lg bg-indigo-500/10 transition-colors"
+          >Today</button>
+        )}
+        <button
+          className="btn-ghost"
+          onClick={() => setCurrentDate(d => addMonths(d, 1))}
+          disabled={isSameMonth(currentDate, new Date())}
+        >›</button>
       </div>
 
       {/* Expenses + Net Savings */}
