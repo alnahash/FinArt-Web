@@ -740,11 +740,21 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   return (
     <button
       onClick={() => onChange(!value)}
-      className={`relative w-12 h-6 rounded-full transition-colors ${value ? 'bg-purple-500' : 'bg-slate-600'}`}
+      className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
+        value
+          ? 'bg-gradient-to-r from-purple-500 to-purple-600 shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70'
+          : 'bg-gradient-to-r from-slate-600 to-slate-700 shadow-md hover:shadow-lg hover:from-slate-500 hover:to-slate-600'
+      }`}
+      title={value ? 'Enabled' : 'Disabled'}
     >
       <span
-        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-6' : 'translate-x-0.5'}`}
+        className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all duration-300 ${
+          value
+            ? 'translate-x-7 shadow-purple-500/40'
+            : 'translate-x-1 shadow-slate-900/50'
+        }`}
       />
+      <span className={`absolute inset-0 rounded-full transition-opacity duration-300 ${value ? 'opacity-100' : 'opacity-0'}`} style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)' }} />
     </button>
   )
 }
