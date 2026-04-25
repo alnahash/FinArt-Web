@@ -35,6 +35,7 @@ export default function TransactionsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [loadingAll, setLoadingAll] = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentDayOfMonth = currentDate.getDate()
@@ -81,6 +82,31 @@ export default function TransactionsPage() {
     if (reset) setLoading(false)
     else setLoadingMore(false)
   }, [user, month, year, typeFilter, debouncedSearch, categoryFilter, startDay, offset])
+
+  const loadAllTxs = useCallback(async () => {
+    if (!user) return
+    setLoadingAll(true)
+
+    try {
+      const remainingCount = total - txs.length
+      const { data } = await getTransactions(
+        user.id,
+        {
+          month, year,
+          type: typeFilter === 'all' ? undefined : typeFilter,
+          search: debouncedSearch || undefined,
+          categoryId: categoryFilter || undefined,
+        },
+        remainingCount > 0 ? remainingCount : 1,
+        offset,
+        startDay
+      )
+
+      setTxs(prev => [...prev, ...(data as Transaction[] ?? [])])
+    } finally {
+      setLoadingAll(false)
+    }
+  }, [user, month, year, typeFilter, debouncedSearch, categoryFilter, startDay, offset, total, txs.length])
 
   useEffect(() => { loadTxs(true) }, [user, month, year, typeFilter, debouncedSearch, categoryFilter, startDay]) // eslint-disable-line
 
@@ -211,9 +237,12 @@ export default function TransactionsPage() {
                 onToggleSelect={() => toggleSelection(tx.id)} />
             ))}
             {txs.length < total && (
-              <div className="p-4 text-center">
-                <button className="btn-ghost text-sm" onClick={() => loadTxs(false)} disabled={loadingMore}>
-                  {loadingMore ? 'Loading…' : `Load more (${total - txs.length} remaining)`}
+              <div className="p-4 flex gap-2 justify-center flex-wrap">
+                <button className="btn-ghost text-sm" onClick={() => loadTxs(false)} disabled={loadingMore || loadingAll}>
+                  {loadingMore ? 'Loading…' : `Load more (${total - txs.length})`}
+                </button>
+                <button className="btn-ghost text-sm" onClick={loadAllTxs} disabled={loadingMore || loadingAll}>
+                  {loadingAll ? 'Loading all…' : 'Load All'}
                 </button>
               </div>
             )}
