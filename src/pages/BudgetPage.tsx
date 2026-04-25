@@ -22,6 +22,7 @@ export default function BudgetPage() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [copying, setCopying] = useState(false)
   const [copyMsg, setCopyMsg] = useState('')
+  const [recurrenceFilter, setRecurrenceFilter] = useState<'all' | 'monthly' | 'yearly' | 'one_time'>('all')
 
   const month = currentDate.getMonth() + 1
   const year = currentDate.getFullYear()
@@ -127,7 +128,7 @@ export default function BudgetPage() {
       </div>
 
       {/* Copy from last month */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
         <button
           onClick={handleCopyFromLastMonth}
           disabled={copying}
@@ -138,13 +139,61 @@ export default function BudgetPage() {
         {copyMsg && <span className="text-xs text-green-400">{copyMsg}</span>}
       </div>
 
+      {/* Recurrence filter */}
+      <div className="flex gap-2 p-1 bg-slate-800 rounded-lg border border-slate-700 w-fit">
+        <button
+          onClick={() => setRecurrenceFilter('all')}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+            recurrenceFilter === 'all'
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/50'
+              : 'text-slate-300 hover:text-slate-100'
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setRecurrenceFilter('monthly')}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+            recurrenceFilter === 'monthly'
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/50'
+              : 'text-slate-300 hover:text-slate-100'
+          }`}
+        >
+          Monthly
+        </button>
+        <button
+          onClick={() => setRecurrenceFilter('yearly')}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+            recurrenceFilter === 'yearly'
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/50'
+              : 'text-slate-300 hover:text-slate-100'
+          }`}
+        >
+          Yearly
+        </button>
+        <button
+          onClick={() => setRecurrenceFilter('one_time')}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+            recurrenceFilter === 'one_time'
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/50'
+              : 'text-slate-300 hover:text-slate-100'
+          }`}
+        >
+          One Off
+        </button>
+      </div>
+
       {/* Category groups */}
       <div className="space-y-3">
         {tree.map(({ group, children }) => {
+          const filteredChildren = recurrenceFilter === 'all'
+            ? children
+            : children.filter(c => c.recurrence_type === recurrenceFilter)
           const totals = getGroupTotals(group.id)
           const isOpen = !collapsed[group.id]
-          const activeChildren = spending.filter(s => s.category.parent_id === group.id)
-          const isIncomeGroup = children.some(c => c.is_income)
+          const activeChildren = spending.filter(s => s.category.parent_id === group.id &&
+            (recurrenceFilter === 'all' || s.category.recurrence_type === recurrenceFilter))
+          const isIncomeGroup = filteredChildren.some(c => c.is_income)
           const groupPct = totals.budget > 0 ? Math.min((totals.spent / totals.budget) * 100, 100) : 0
 
           return (
@@ -155,7 +204,7 @@ export default function BudgetPage() {
                 <div className="flex-1 flex items-center gap-2.5 min-w-0 text-left">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
                   <span className="font-bold text-sm text-slate-100 tracking-wide uppercase">{group.name}</span>
-                  <span className="text-xs text-slate-500 font-normal normal-case">({children.length})</span>
+                  <span className="text-xs text-slate-500 font-normal normal-case">({filteredChildren.length})</span>
                 </div>
                 <div className="text-right flex-shrink-0">
                   {(totals.spent > 0 || totals.budget > 0) && (
@@ -181,14 +230,14 @@ export default function BudgetPage() {
                 </div>
               )}
 
-              {isOpen && children.length > 0 && (
+              {isOpen && filteredChildren.length > 0 && (
                 <div className="border-t border-slate-700/50">
-                  {children.map((cat, idx) => {
+                  {filteredChildren.map((cat, idx) => {
                     const cs = activeChildren.find(s => s.category.id === cat.id)
                     const spent = cs?.spent ?? 0
                     const budget = cs?.budget ?? 0
                     const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0
-                    const isLast = idx === children.length - 1
+                    const isLast = idx === filteredChildren.length - 1
 
                     return (
                       <div key={cat.id}
