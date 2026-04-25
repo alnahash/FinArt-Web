@@ -740,21 +740,36 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   return (
     <button
       onClick={() => onChange(!value)}
-      className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
+      className={`relative w-16 h-8 rounded-full transition-all duration-300 overflow-hidden group ${
         value
-          ? 'bg-gradient-to-r from-purple-500 to-purple-600 shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70'
-          : 'bg-gradient-to-r from-slate-600 to-slate-700 shadow-md hover:shadow-lg hover:from-slate-500 hover:to-slate-600'
+          ? 'bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-500'
+          : 'bg-gradient-to-r from-slate-700 to-slate-800'
       }`}
       title={value ? 'Enabled' : 'Disabled'}
     >
+      {/* Track background shine effect */}
+      <span className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300 bg-white" />
+
+      {/* Animated knob */}
       <span
-        className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all duration-300 ${
+        className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all duration-300 flex items-center justify-center font-bold text-xs ${
           value
-            ? 'translate-x-8 shadow-purple-500/40'
-            : 'translate-x-0.5 shadow-slate-900/50'
+            ? 'translate-x-8 shadow-lg shadow-emerald-500/60 text-emerald-500'
+            : 'translate-x-0.5 shadow-md shadow-slate-900/50 text-slate-400'
         }`}
+      >
+        {value ? '✓' : '✕'}
+      </span>
+
+      {/* Inner glow effect */}
+      <span
+        className={`absolute inset-0 rounded-full transition-opacity duration-300 ${
+          value ? 'opacity-30 shadow-inset' : 'opacity-0'
+        }`}
+        style={{
+          background: value ? 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent)' : 'none'
+        }}
       />
-      <span className={`absolute inset-0 rounded-full transition-opacity duration-300 ${value ? 'opacity-100' : 'opacity-0'}`} style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)' }} />
     </button>
   )
 }
