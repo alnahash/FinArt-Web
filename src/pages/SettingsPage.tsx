@@ -672,11 +672,6 @@ function InlineEditForm({ cat, name, onNameChange, color, onColorChange, icon, o
       <div className="flex gap-2 items-center">
         <input className="input flex-1 min-w-0 text-sm truncate" value={name} onChange={e => onNameChange(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel() }} autoFocus />
-        <button onClick={() => setShowPicker(p => !p)}
-          className="w-10 h-10 rounded-xl border flex items-center justify-center text-lg flex-shrink-0"
-          style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}
-          title="Change icon"
-        >{icon || '🏷️'}</button>
         <input type="color" value={color} onChange={e => onColorChange(e.target.value)}
           className="w-10 h-10 rounded-xl border cursor-pointer p-1 flex-shrink-0"
           style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}
