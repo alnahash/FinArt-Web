@@ -104,6 +104,120 @@ export default function AnalysisPage() {
 
   const display = (amount: number) => hideAmounts ? '••••' : fmtCurrency(amount, currency)
 
+  // AI-powered spending analysis and suggestions
+  const generateSuggestions = useMemo(() => {
+    const suggestions: Array<{ emoji: string; title: string; description: string; savingsPerMonth: number }> = []
+
+    if (categoryBreakdown.length === 0) return suggestions
+
+    const avgCategorySpending = ytdStats.totalExpenses / Math.max(categoryBreakdown.length, 1)
+
+    categoryBreakdown.slice(0, 5).forEach(cat => {
+      const categoryName = cat.name.toLowerCase()
+      let suggestion: { emoji: string; title: string; description: string; savings: number } | null = null
+
+      // Coffee & Cafes
+      if (categoryName.includes('coffee') || categoryName.includes('cafe') || categoryName.includes('starbucks')) {
+        const monthlySpend = cat.amount / 12
+        if (monthlySpend > 100) {
+          suggestion = {
+            emoji: '☕',
+            title: 'Reduce Coffee Shop Visits',
+            description: `You spend ${fmtCurrency(monthlySpend, currency)}/month on coffee. Making coffee at home costs ~${fmtCurrency(monthlySpend * 0.3, currency)}/month. Save ${fmtCurrency(monthlySpend * 0.7, currency)}/month!`,
+            savings: monthlySpend * 0.7
+          }
+        }
+      }
+
+      // Food & Restaurants
+      if (categoryName.includes('restaurant') || categoryName.includes('food') || categoryName.includes('dining') || categoryName.includes('takeout')) {
+        const monthlySpend = cat.amount / 12
+        if (monthlySpend > 500) {
+          suggestion = {
+            emoji: '🍽️',
+            title: 'Cook More at Home',
+            description: `Restaurant spending: ${fmtCurrency(monthlySpend, currency)}/month. Cooking at home could save ~50%. Potential savings: ${fmtCurrency(monthlySpend * 0.5, currency)}/month!`,
+            savings: monthlySpend * 0.5
+          }
+        }
+      }
+
+      // Shopping & Retail
+      if (categoryName.includes('shopping') || categoryName.includes('retail') || categoryName.includes('mall')) {
+        const monthlySpend = cat.amount / 12
+        if (monthlySpend > 300) {
+          suggestion = {
+            emoji: '🛍️',
+            title: 'Smart Shopping Strategy',
+            description: `Monthly shopping: ${fmtCurrency(monthlySpend, currency)}. Try the 30-day rule: wait 30 days before non-essential purchases. Save ~${fmtCurrency(monthlySpend * 0.3, currency)}/month!`,
+            savings: monthlySpend * 0.3
+          }
+        }
+      }
+
+      // Entertainment & Subscriptions
+      if (categoryName.includes('entertainment') || categoryName.includes('movies') || categoryName.includes('subscription')) {
+        const monthlySpend = cat.amount / 12
+        if (monthlySpend > 150) {
+          suggestion = {
+            emoji: '🎬',
+            title: 'Review Subscriptions',
+            description: `Entertainment spending: ${fmtCurrency(monthlySpend, currency)}/month. Cancel unused subscriptions. Potential savings: ${fmtCurrency(monthlySpend * 0.4, currency)}/month!`,
+            savings: monthlySpend * 0.4
+          }
+        }
+      }
+
+      // Travel & Transport
+      if (categoryName.includes('travel') || categoryName.includes('uber') || categoryName.includes('taxi') || categoryName.includes('transport')) {
+        const monthlySpend = cat.amount / 12
+        if (monthlySpend > 200) {
+          suggestion = {
+            emoji: '🚗',
+            title: 'Optimize Travel',
+            description: `Travel costs: ${fmtCurrency(monthlySpend, currency)}/month. Use public transport or carpool more. Save ~${fmtCurrency(monthlySpend * 0.4, currency)}/month!`,
+            savings: monthlySpend * 0.4
+          }
+        }
+      }
+
+      // Utilities & Services
+      if (categoryName.includes('utility') || categoryName.includes('electricity') || categoryName.includes('water') || categoryName.includes('internet')) {
+        const monthlySpend = cat.amount / 12
+        if (monthlySpend > 150) {
+          suggestion = {
+            emoji: '💡',
+            title: 'Reduce Utility Costs',
+            description: `Utilities: ${fmtCurrency(monthlySpend, currency)}/month. Energy efficiency improvements can save ~${fmtCurrency(monthlySpend * 0.2, currency)}/month!`,
+            savings: monthlySpend * 0.2
+          }
+        }
+      }
+
+      // General high spending
+      if (!suggestion && cat.percentage > 15) {
+        const monthlySpend = cat.amount / 12
+        suggestion = {
+          emoji: '💰',
+          title: `Review ${cat.name}`,
+          description: `${cat.name} is ${cat.percentage.toFixed(1)}% of your spending. Review if this aligns with your goals. Reduce by 20%? Save ${fmtCurrency(monthlySpend * 0.2, currency)}/month!`,
+          savings: monthlySpend * 0.2
+        }
+      }
+
+      if (suggestion) {
+        suggestions.push({
+          emoji: suggestion.emoji,
+          title: suggestion.title,
+          description: suggestion.description,
+          savingsPerMonth: suggestion.savings
+        })
+      }
+    })
+
+    return suggestions.sort((a, b) => b.savingsPerMonth - a.savingsPerMonth)
+  }, [categoryBreakdown, ytdStats, currency])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -246,6 +360,42 @@ export default function AnalysisPage() {
           </div>
         </div>
       </div>
+
+      {/* AI-Powered Suggestions */}
+      {generateSuggestions.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-900/30 to-slate-900 rounded-lg p-6 border border-purple-500/30">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-2xl">🤖</span>
+            <h2 className="text-lg font-bold text-primary">AI Spending Suggestions</h2>
+          </div>
+          <p className="text-secondary text-sm mb-4">Based on your spending patterns, here are personalized ways to save money:</p>
+          <div className="space-y-3">
+            {generateSuggestions.map((suggestion, idx) => (
+              <div key={idx} className="bg-slate-800/60 rounded-lg p-4 border border-slate-700/50 hover:border-purple-500/50 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{suggestion.emoji}</span>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-primary mb-1">{suggestion.title}</h3>
+                    <p className="text-secondary text-sm mb-2">{suggestion.description}</p>
+                    <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold">
+                      <span>💚</span>
+                      <span>Potential savings: {display(suggestion.savingsPerMonth)}/month</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {generateSuggestions.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <div className="text-sm text-secondary">
+                <span className="font-semibold text-cyan-400">Total potential savings: </span>
+                {display(generateSuggestions.reduce((sum, s) => sum + s.savingsPerMonth, 0))}/month
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Insights */}
       <div className="bg-surface rounded-lg p-6 border border-slate-700">
