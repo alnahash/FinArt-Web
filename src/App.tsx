@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import TransactionsPage from './pages/TransactionsPage'
 import BudgetPage from './pages/BudgetPage'
+import AnalysisPage from './pages/AnalysisPage'
 import SettingsPage from './pages/SettingsPage'
 import ImportPage from './pages/ImportPage'
 
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="budget" element={<BudgetPage />} />
+          <Route path="analysis" element={<AnalysisPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="import" element={<ImportPage />} />
         </Route>

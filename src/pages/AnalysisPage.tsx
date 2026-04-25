@@ -1,0 +1,261 @@
+import { useState, useEffect, useMemo } from 'react'
+import { subMonths, getYear, getMonth } from 'date-fns'
+import { useAuth } from '../hooks/useAuth'
+import { useProfile } from '../hooks/useProfile'
+import { getMonthlySummary, getCategorySpending, getCategories } from '../services/db'
+import { fmt as fmtCurrency } from '../lib/currency'
+import type { Category } from '../types'
+
+export default function AnalysisPage() {
+  const { user } = useAuth()
+  const profile = useProfile()
+  const currency = profile?.currency ?? 'BHD'
+  const hideAmounts = profile?.hide_amounts ?? false
+  const startDay = profile?.month_start_day ?? 1
+
+  const [loading, setLoading] = useState(true)
+  const [monthlyData, setMonthlyData] = useState<Array<{ month: number; year: number; income: number; expenses: number; savings: number }>>([])
+  const [categoryBreakdown, setCategoryBreakdown] = useState<Array<{ name: string; amount: number; percentage: number }>>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [ytdStats, setYtdStats] = useState({ totalIncome: 0, totalExpenses: 0, totalSavings: 0, avgMonthlyExpenses: 0 })
+
+  const now = new Date()
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = subMonths(now, 11 - i)
+    return { month: getMonth(d) + 1, year: getYear(d) }
+  })
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+      try {
+        const [catsRes] = await Promise.all([
+          getCategories(user.id),
+        ])
+
+        const cats = catsRes.data ?? []
+        setCategories(cats)
+
+        const monthData: Array<{ month: number; year: number; income: number; expenses: number; savings: number }> = []
+        let ytdIncome = 0
+        let ytdExpenses = 0
+
+        for (const { month, year } of months) {
+          const summary = await getMonthlySummary(user.id, month, year, startDay)
+          monthData.push({
+            month,
+            year,
+            income: summary.totalCredit,
+            expenses: summary.totalDebit,
+            savings: summary.netSavings
+          })
+          ytdIncome += summary.totalCredit
+          ytdExpenses += summary.totalDebit
+        }
+
+        setMonthlyData(monthData)
+
+        const catSpending = await getCategorySpending(user.id, getMonth(now) + 1, getYear(now), cats, startDay)
+        const breakdown = (catSpending ?? [])
+          .filter(cs => !cs.isIncome && (cs.spent ?? 0) > 0)
+          .sort((a, b) => (b.spent ?? 0) - (a.spent ?? 0))
+          .slice(0, 8)
+
+        const totalCatSpending = breakdown.reduce((s, c) => s + (c.spent ?? 0), 0)
+        setCategoryBreakdown(
+          breakdown.map(c => ({
+            name: c.category.name,
+            amount: c.spent ?? 0,
+            percentage: totalCatSpending > 0 ? ((c.spent ?? 0) / totalCatSpending) * 100 : 0
+          }))
+        )
+
+        const avgMonthly = monthData.length > 0 ? ytdExpenses / monthData.length : 0
+        setYtdStats({
+          totalIncome: ytdIncome,
+          totalExpenses: ytdExpenses,
+          totalSavings: ytdIncome - ytdExpenses,
+          avgMonthlyExpenses: avgMonthly
+        })
+      } catch (err) {
+        console.error('Failed to load analysis data:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [user, startDay])
+
+  const display = (amount: number) => hideAmounts ? '••••' : fmtCurrency(amount, currency)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  const maxExpense = Math.max(...monthlyData.map(m => m.expenses), 1)
+
+  return (
+    <div className="p-4 space-y-4 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-primary mb-2">Analysis</h1>
+        <p className="text-secondary text-sm">Financial insights & trends</p>
+      </div>
+
+      {/* YTD Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-surface rounded-lg p-4 border border-slate-700">
+          <div className="text-xs text-secondary uppercase font-semibold mb-2">Total Income</div>
+          <div className="text-2xl font-bold text-emerald-400">{display(ytdStats.totalIncome)}</div>
+          <div className="text-xs text-secondary mt-2">Last 12 months</div>
+        </div>
+        <div className="bg-surface rounded-lg p-4 border border-slate-700">
+          <div className="text-xs text-secondary uppercase font-semibold mb-2">Total Expenses</div>
+          <div className="text-2xl font-bold text-red-400">{display(ytdStats.totalExpenses)}</div>
+          <div className="text-xs text-secondary mt-2">Last 12 months</div>
+        </div>
+        <div className="bg-surface rounded-lg p-4 border border-slate-700">
+          <div className="text-xs text-secondary uppercase font-semibold mb-2">Net Savings</div>
+          <div className={`text-2xl font-bold ${ytdStats.totalSavings >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
+            {display(ytdStats.totalSavings)}
+          </div>
+          <div className="text-xs text-secondary mt-2">Last 12 months</div>
+        </div>
+        <div className="bg-surface rounded-lg p-4 border border-slate-700">
+          <div className="text-xs text-secondary uppercase font-semibold mb-2">Avg Monthly</div>
+          <div className="text-2xl font-bold text-amber-400">{display(ytdStats.avgMonthlyExpenses)}</div>
+          <div className="text-xs text-secondary mt-2">Spending</div>
+        </div>
+      </div>
+
+      {/* Monthly Trend */}
+      <div className="bg-surface rounded-lg p-6 border border-slate-700">
+        <h2 className="text-xl font-bold text-primary mb-4">Monthly Trend (Last 12 Months)</h2>
+        <div className="space-y-3">
+          {monthlyData.map((month, idx) => {
+            const monthLabel = new Date(month.year, month.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+            const barHeight = month.expenses > 0 ? (month.expenses / maxExpense) * 100 : 0
+            return (
+              <div key={idx} className="space-y-1">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-secondary w-12">{monthLabel}</span>
+                  <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
+                    <div
+                      className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
+                      style={{ width: `${barHeight}%` }}
+                    />
+                  </div>
+                  <span className="text-primary font-semibold text-right w-32">{display(month.expenses)}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Income vs Expenses Comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-surface rounded-lg p-6 border border-slate-700">
+          <h2 className="text-lg font-bold text-primary mb-4">Income vs Expenses</h2>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-secondary text-sm">Income</span>
+                <span className="text-emerald-400 font-semibold">{display(ytdStats.totalIncome)}</span>
+              </div>
+              <div className="bg-slate-800 rounded-full h-3 overflow-hidden">
+                <div className="bg-emerald-500 h-full" style={{ width: '100%' }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-secondary text-sm">Expenses</span>
+                <span className="text-red-400 font-semibold">{display(ytdStats.totalExpenses)}</span>
+              </div>
+              <div className="bg-slate-800 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-red-500 h-full"
+                  style={{ width: ytdStats.totalIncome > 0 ? `${(ytdStats.totalExpenses / ytdStats.totalIncome) * 100}%` : '0%' }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 pt-4 border-t border-slate-700">
+            <div className="text-sm text-secondary mb-1">Savings Rate</div>
+            <div className="text-3xl font-bold text-cyan-400">
+              {ytdStats.totalIncome > 0 ? ((ytdStats.totalSavings / ytdStats.totalIncome) * 100).toFixed(1) : '0'}%
+            </div>
+          </div>
+        </div>
+
+        {/* Category Breakdown */}
+        <div className="bg-surface rounded-lg p-6 border border-slate-700">
+          <h2 className="text-lg font-bold text-primary mb-4">Top Spending Categories</h2>
+          <div className="space-y-3">
+            {categoryBreakdown.length > 0 ? (
+              categoryBreakdown.map((cat, idx) => (
+                <div key={idx}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-secondary text-sm">{cat.name}</span>
+                    <span className="text-primary font-semibold text-sm">{cat.percentage.toFixed(1)}%</span>
+                  </div>
+                  <div className="bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-full"
+                      style={{ width: `${cat.percentage}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-secondary mt-1">{display(cat.amount)}</div>
+                </div>
+              ))
+            ) : (
+              <p className="text-secondary text-sm">No spending data available</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Insights */}
+      <div className="bg-surface rounded-lg p-6 border border-slate-700">
+        <h2 className="text-lg font-bold text-primary mb-4">Key Insights</h2>
+        <div className="space-y-3">
+          {ytdStats.totalIncome > 0 && (
+            <div className="flex items-start gap-3 p-3 bg-slate-900 rounded-lg border border-slate-600">
+              <span className="text-lg">💡</span>
+              <div>
+                <div className="text-sm font-semibold text-primary">Savings Rate</div>
+                <div className="text-xs text-secondary">You're saving {((ytdStats.totalSavings / ytdStats.totalIncome) * 100).toFixed(1)}% of your income</div>
+              </div>
+            </div>
+          )}
+          {monthlyData.length > 1 && (
+            <div className="flex items-start gap-3 p-3 bg-slate-900 rounded-lg border border-slate-600">
+              <span className="text-lg">📊</span>
+              <div>
+                <div className="text-sm font-semibold text-primary">Average Monthly Spending</div>
+                <div className="text-xs text-secondary">{display(ytdStats.avgMonthlyExpenses)} per month</div>
+              </div>
+            </div>
+          )}
+          {categoryBreakdown.length > 0 && (
+            <div className="flex items-start gap-3 p-3 bg-slate-900 rounded-lg border border-slate-600">
+              <span className="text-lg">🎯</span>
+              <div>
+                <div className="text-sm font-semibold text-primary">Top Category</div>
+                <div className="text-xs text-secondary">{categoryBreakdown[0]?.name} accounts for {categoryBreakdown[0]?.percentage.toFixed(1)}% of spending</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
