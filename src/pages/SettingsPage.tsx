@@ -750,8 +750,8 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       <span
         className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all duration-300 ${
           value
-            ? 'translate-x-7 shadow-purple-500/40'
-            : 'translate-x-1 shadow-slate-900/50'
+            ? 'translate-x-8 shadow-purple-500/40'
+            : 'translate-x-0.5 shadow-slate-900/50'
         }`}
       />
       <span className={`absolute inset-0 rounded-full transition-opacity duration-300 ${value ? 'opacity-100' : 'opacity-0'}`} style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)' }} />
