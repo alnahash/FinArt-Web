@@ -180,18 +180,25 @@ export default function DashboardPage() {
           {avg > 0 && <span className="text-white text-2xl font-bold">{avgPct}%</span>}
         </div>
 
-        <div className="flex justify-between text-slate-400 text-xs mt-0.5 mb-2">
+        <div className="flex justify-between text-slate-400 text-xs mt-0.5 mb-3">
           <span>{format(periodStartDate, 'd MMMM yyyy')} - {format(periodEndDate, 'd MMMM yyyy')}</span>
           {avg > 0 && <span>of monthly avg</span>}
         </div>
 
+        {/* Income and Expenses summary */}
+        <div className="grid grid-cols-2 gap-3 mb-3 px-1">
+          <div>
+            <p className="text-xs text-slate-500 mb-1">Total Income</p>
+            <p className="text-sm font-semibold text-green-400">{mask(summary.totalCredit)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 mb-1">Total Expenses</p>
+            <p className="text-sm font-semibold text-red-400">{mask(summary.totalDebit)}</p>
+          </div>
+        </div>
+
         {/* Net savings row */}
         <div className="flex items-center gap-3 mb-3 px-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400">Income</span>
-            <span className="text-xs font-semibold text-green-400">{mask(summary.totalCredit)}</span>
-          </div>
-          <span className="text-slate-600">·</span>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-slate-400">Savings</span>
             <span className={`text-xs font-semibold ${summary.netSavings >= 0 ? 'text-indigo-400' : 'text-red-400'}`}>
