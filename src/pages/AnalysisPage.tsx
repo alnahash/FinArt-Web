@@ -630,7 +630,7 @@ export default function AnalysisPage() {
                           style={{ width: `${barHeight}%` }}
                         />
                       </div>
-                      <span className="text-primary font-semibold text-right w-32">{display(month.expenses)}</span>
+                      <span className="text-primary font-semibold text-right w-32">Expenses: {display(month.expenses)}</span>
                     </div>
                   </button>
                 )
@@ -650,7 +650,7 @@ export default function AnalysisPage() {
                             style={{ width: `${barHeight}%` }}
                           />
                         </div>
-                        <span className="text-primary font-semibold text-right w-32">{display(year.expenses)}</span>
+                        <span className="text-primary font-semibold text-right w-32">Expenses: {display(year.expenses)}</span>
                       </div>
                     </div>
                   )
@@ -682,7 +682,7 @@ export default function AnalysisPage() {
                                 style={{ width: `${barHeight}%` }}
                               />
                             </div>
-                            <span className="text-primary font-semibold text-right w-20 text-xs">{display(month.expenses)}</span>
+                            <span className="text-primary font-semibold text-right text-xs">Expenses: {display(month.expenses)}</span>
                           </button>
                         )
                       })}
@@ -710,7 +710,7 @@ export default function AnalysisPage() {
                           style={{ width: `${barHeight}%` }}
                         />
                       </div>
-                      <span className="text-primary font-semibold text-right w-32">{display(month.expenses)}</span>
+                      <span className="text-primary font-semibold text-right w-32">Expenses: {display(month.expenses)}</span>
                     </div>
                   </button>
                 )
