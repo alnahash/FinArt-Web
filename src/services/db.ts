@@ -29,6 +29,14 @@ export const resetPassword = (email: string) =>
     redirectTo: window.location.origin + '/#/reset-password',
   })
 
+export const signInWithGoogle = () =>
+  supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + '/#/dashboard',
+    },
+  })
+
 // ── Profile ───────────────────────────────────────────────────────────────────
 
 export const getProfile = (userId: string) =>
