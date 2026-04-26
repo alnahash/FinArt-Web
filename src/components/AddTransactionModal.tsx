@@ -80,7 +80,7 @@ export default function AddTransactionModal({ categories, currency = 'BHD', onCl
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#12101a]" style={{ fontFamily: 'system-ui, sans-serif' }}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#12101a] max-w-lg mx-auto" style={{ fontFamily: 'system-ui, sans-serif' }}>
 
       {/* Header */}
       <div className="flex items-center px-4 pt-10 pb-5">
