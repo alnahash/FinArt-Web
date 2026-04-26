@@ -42,8 +42,11 @@ export const signInWithGoogle = () =>
 export const getProfile = (userId: string) =>
   supabase.from('profiles').select('*').eq('id', userId).single()
 
-export const updateProfile = (userId: string, updates: Partial<{ full_name: string; monthly_budget: number; currency: string; month_start_day: number; start_month: number; hide_amounts: boolean }>) =>
+export const updateProfile = (userId: string, updates: Partial<{ full_name: string; monthly_budget: number; currency: string; month_start_day: number; start_month: number; hide_amounts: boolean; onboarded: boolean }>) =>
   supabase.from('profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', userId)
+
+export const completeOnboarding = (userId: string) =>
+  supabase.from('profiles').update({ onboarded: true, updated_at: new Date().toISOString() }).eq('id', userId)
 
 // ── Categories ────────────────────────────────────────────────────────────────
 

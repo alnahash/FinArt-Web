@@ -6,6 +6,7 @@ export interface Profile {
   month_start_day: number
   start_month: number
   hide_amounts: boolean
+  onboarded: boolean
   created_at: string
   updated_at: string
 }

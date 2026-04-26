@@ -20,6 +20,13 @@ export default function DashboardPage() {
   const startDay = profile?.month_start_day ?? 1
   const navigate = useNavigate()
 
+  // Check if user needs onboarding
+  useEffect(() => {
+    if (profile && !profile.onboarded) {
+      navigate('/onboarding', { replace: true })
+    }
+  }, [profile, navigate])
+
   const [currentDate, setCurrentDate] = useState(new Date())
 
   const { periodStartDate, periodEndDate, month, year } = useMemo(() => {

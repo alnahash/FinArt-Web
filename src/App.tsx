@@ -8,6 +8,7 @@ import BudgetPage from './pages/BudgetPage'
 import AnalysisPage from './pages/AnalysisPage'
 import SettingsPage from './pages/SettingsPage'
 import ImportPage from './pages/ImportPage'
+import OnboardingPage from './pages/OnboardingPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -24,7 +25,8 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+        <Route path="/onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
+        <Route path="/" element={<PrivateRoute><OnboardingRedirect><Layout /></OnboardingRedirect></PrivateRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="transactions" element={<TransactionsPage />} />
@@ -37,4 +39,12 @@ export default function App() {
       </Routes>
     </HashRouter>
   )
+}
+
+// Component to redirect unboarded users to onboarding
+function OnboardingRedirect({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  // This is a simple wrapper - the actual onboarding check happens in DashboardPage effect
+  // to avoid circular redirects and race conditions
+  return <>{children}</>
 }
