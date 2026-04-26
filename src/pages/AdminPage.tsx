@@ -16,6 +16,7 @@ interface UserData {
   created_at: string
   last_login_at: string | null
   login_count: number
+  email_confirmed: boolean
 }
 
 interface StatsData {

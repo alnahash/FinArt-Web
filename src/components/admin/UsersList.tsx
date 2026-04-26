@@ -8,6 +8,7 @@ interface User {
   created_at: string
   last_login_at: string | null
   login_count: number
+  email_confirmed: boolean
 }
 
 interface UsersListProps {
@@ -167,12 +168,14 @@ export default function UsersList({ users }: UsersListProps) {
                   <td className="px-6 py-4 text-sm">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        user.last_login_at
+                        !user.email_confirmed
+                          ? 'bg-yellow-500/10 text-yellow-400'
+                          : user.last_login_at
                           ? 'bg-green-500/10 text-green-400'
                           : 'bg-slate-700 text-slate-400'
                       }`}
                     >
-                      {getActivityStatus(user.last_login_at)}
+                      {!user.email_confirmed ? 'Unverified' : getActivityStatus(user.last_login_at)}
                     </span>
                   </td>
                 </tr>
