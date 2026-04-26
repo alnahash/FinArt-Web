@@ -9,6 +9,7 @@ import AnalysisPage from './pages/AnalysisPage'
 import SettingsPage from './pages/SettingsPage'
 import ImportPage from './pages/ImportPage'
 import OnboardingPage from './pages/OnboardingPage'
+import AdminPage from './pages/AdminPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -26,6 +27,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
+        <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
         <Route path="/" element={<PrivateRoute><OnboardingRedirect><Layout /></OnboardingRedirect></PrivateRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />

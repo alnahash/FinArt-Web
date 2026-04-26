@@ -238,3 +238,72 @@ export const copyBudgetsFromPreviousMonth = async (userId: string, month: number
   )
   return { copied: prev.length }
 }
+
+// ── Admin ─────────────────────────────────────────────────────────────────
+
+// Admin: Get all users (NOTE: requires email field in profiles table)
+// Migration needed:
+// ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
+export const getAllUsers = () =>
+  supabase
+    .from('profiles')
+    .select('id, full_name, email, currency, created_at, last_login_at, login_count')
+    .order('created_at', { ascending: false })
+
+export const getAppStatistics = async () => {
+  // Get total users count
+  const { count: userCount } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+
+  // Get total transactions count
+  const { count: txCount } = await supabase
+    .from('transactions')
+    .select('id', { count: 'exact', head: true })
+
+  // Get total categories count
+  const { count: catCount } = await supabase
+    .from('categories')
+    .select('id', { count: 'exact', head: true })
+
+  // Calculate average spending (total debits / number of users)
+  const { data: debits } = await supabase
+    .from('transactions')
+    .select('amount')
+    .eq('type', 'debit')
+
+  const totalSpending = (debits ?? []).reduce((sum, t) => sum + Number(t.amount), 0)
+  const avgSpending = userCount ? totalSpending / userCount : 0
+
+  // Get new users this month
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const { count: newUsersCount } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', monthStart)
+
+  return {
+    totalUsers: userCount ?? 0,
+    totalTransactions: txCount ?? 0,
+    totalCategories: catCount ?? 0,
+    averageSpending: avgSpending,
+    newUsersThisMonth: newUsersCount ?? 0,
+  }
+}
+
+export const updateLastLogin = async (userId: string) => {
+  const now = new Date().toISOString()
+  const { data } = await supabase
+    .from('profiles')
+    .select('login_count')
+    .eq('id', userId)
+    .single()
+
+  const newCount = (data?.login_count ?? 0) + 1
+
+  return supabase
+    .from('profiles')
+    .update({ last_login_at: now, login_count: newCount })
+    .eq('id', userId)
+}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { format, subMonths, setDate, addMonths, isSameMonth } from 'date-fns'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
-import { getMonthlySummary, getTransactions, getCategories, insertTransaction, getMonthlyTotals, getCategorySpending } from '../services/db'
+import { getMonthlySummary, getTransactions, getCategories, insertTransaction, getMonthlyTotals, getCategorySpending, updateLastLogin } from '../services/db'
 import { fmt as fmtCurrency } from '../lib/currency'
 import type { Transaction, Category } from '../types'
 import TransactionCard from '../components/TransactionCard'
@@ -26,6 +26,13 @@ export default function DashboardPage() {
       navigate('/onboarding', { replace: true })
     }
   }, [profile, navigate])
+
+  // Track user login
+  useEffect(() => {
+    if (user) {
+      updateLastLogin(user.id).catch(err => console.error('Failed to update last login:', err))
+    }
+  }, [user?.id])
 
   const [currentDate, setCurrentDate] = useState(new Date())
 

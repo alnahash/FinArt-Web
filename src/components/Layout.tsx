@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
+import { useAuth } from '../hooks/useAuth'
 
 const NAV = [
   { to: '/dashboard', label: 'Home', icon: '⊞' },
@@ -12,6 +13,7 @@ const NAV = [
 export default function Layout() {
   const navigate = useNavigate()
   const { isDark, toggle } = useTheme()
+  const { user } = useAuth()
 
   return (
     <div className="flex flex-col min-h-screen max-w-5xl mx-auto">
@@ -19,6 +21,15 @@ export default function Layout() {
       <header className="sticky top-0 z-10 bg-[#6941C6] px-4 py-3 flex items-center gap-2 shadow-lg">
         <button className="text-white/80 text-xl mr-1 transition-all duration-200 hover:text-white active:scale-95" onClick={() => navigate('/settings')}>≡</button>
         <span className="font-bold text-xl text-white tracking-tight flex-1">FinArt</span>
+        {user?.email === 'alnahash@gmail.com' && (
+          <button
+            onClick={() => navigate('/admin')}
+            className="text-white/80 text-xl px-1 transition-all duration-200 hover:text-white active:scale-95"
+            title="Admin Panel"
+          >
+            ⚙️
+          </button>
+        )}
         <button
           onClick={toggle}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200 text-sm font-medium active:scale-95"
