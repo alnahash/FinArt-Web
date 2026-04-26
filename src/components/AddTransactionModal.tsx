@@ -127,7 +127,7 @@ export default function AddTransactionModal({ categories, currency = 'BHD', onCl
         <div className="flex items-center px-5 py-3.5 border-b border-slate-800">
           <span className="text-slate-400 w-28 text-sm shrink-0">Category</span>
           <div className="flex-1 flex justify-end">
-            <select className="bg-transparent text-slate-200 text-sm text-right focus:outline-none appearance-none cursor-pointer"
+            <select className="bg-transparent text-slate-200 text-sm text-left focus:outline-none appearance-none cursor-pointer"
               value={categoryId} onChange={e => setCategoryId(e.target.value)}>
               <option value="" className="bg-slate-900">Misc</option>
               {relevantGroups.map(({ group, children }) =>
