@@ -615,42 +615,67 @@ export default function AnalysisPage() {
           </div>
         )}
         <div className="space-y-3">
+          {/* Legend */}
+          <div className="flex gap-6 pb-3 border-b border-slate-700">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gradient-to-r from-red-500 to-red-600 rounded" />
+              <span className="text-xs text-secondary font-medium">Expenses</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gradient-to-r from-green-500 to-green-600 rounded" />
+              <span className="text-xs text-secondary font-medium">Savings</span>
+            </div>
+          </div>
+
           {chartView === 'rolling' ? (
             viewMode === 'monthly' ? (
               monthlyData.map((month, idx) => {
                 const monthLabel = new Date(month.year, month.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-                const barHeight = month.expenses > 0 ? (month.expenses / maxExpense) * 100 : 0
+                const total = month.expenses + month.savings
+                const expensePercent = total > 0 ? (month.expenses / total) * 100 : 0
+                const savingsPercent = total > 0 ? (month.savings / total) * 100 : 0
+                const totalBarHeight = total > 0 ? (total / (maxExpense * 1.2)) * 100 : 0
                 return (
                   <button key={idx} onClick={() => handleMonthDrill(month.month, month.year)} className="space-y-1 w-full hover:bg-slate-700/50 p-2 rounded transition-colors">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-secondary w-12">{monthLabel}</span>
-                      <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
+                      <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative flex">
                         <div
                           className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
-                          style={{ width: `${barHeight}%` }}
+                          style={{ width: `${expensePercent}%` }}
+                        />
+                        <div
+                          className="bg-gradient-to-r from-green-500 to-green-600 h-full transition-all"
+                          style={{ width: `${savingsPercent}%` }}
                         />
                       </div>
-                      <span className="text-primary font-semibold text-right w-32">Expenses: {display(month.expenses)}</span>
+                      <span className="text-primary font-semibold text-right w-32 text-xs">{display(month.expenses)} | {display(month.savings)}</span>
                     </div>
                   </button>
                 )
               })
             ) : (
               (() => {
-                const maxYearlyExpense = Math.max(...yearlyData.map(y => y.expenses), 1)
+                const maxYearlyTotal = Math.max(...yearlyData.map(y => y.expenses + y.savings), 1)
                 return yearlyData.map((year, idx) => {
-                  const barHeight = year.expenses > 0 ? (year.expenses / maxYearlyExpense) * 100 : 0
+                  const total = year.expenses + year.savings
+                  const expensePercent = total > 0 ? (year.expenses / total) * 100 : 0
+                  const savingsPercent = total > 0 ? (year.savings / total) * 100 : 0
                   return (
                     <div key={idx} className="space-y-1">
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-secondary w-12">{year.year}</span>
-                        <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
+                        <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative flex">
                           <div
                             className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
-                            style={{ width: `${barHeight}%` }}
+                            style={{ width: `${expensePercent}%` }}
+                          />
+                          <div
+                            className="bg-gradient-to-r from-green-500 to-green-600 h-full transition-all"
+                            style={{ width: `${savingsPercent}%` }}
                           />
                         </div>
-                        <span className="text-primary font-semibold text-right w-32">Expenses: {display(year.expenses)}</span>
+                        <span className="text-primary font-semibold text-right w-32 text-xs">{display(year.expenses)} | {display(year.savings)}</span>
                       </div>
                     </div>
                   )
@@ -662,7 +687,7 @@ export default function AnalysisPage() {
               // Show all 3 years calendar data
               const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
               const allYearsMax = Math.max(
-                ...years.flatMap(y => (calendarYearData[y] ?? []).map(m => m.expenses)),
+                ...years.flatMap(y => (calendarYearData[y] ?? []).map(m => m.expenses + m.savings)),
                 1
               )
 
@@ -672,17 +697,23 @@ export default function AnalysisPage() {
                     <div key={year} className="space-y-2 p-4 bg-slate-800/30 rounded-lg">
                       <div className="text-lg font-semibold text-primary mb-4">{year}</div>
                       {(calendarYearData[year] ?? []).map((month, idx) => {
-                        const barHeight = month.expenses > 0 ? (month.expenses / allYearsMax) * 100 : 0
+                        const total = month.expenses + month.savings
+                        const expensePercent = total > 0 ? (month.expenses / total) * 100 : 0
+                        const savingsPercent = total > 0 ? (month.savings / total) * 100 : 0
                         return (
                           <button key={idx} onClick={() => handleMonthDrill(month.month, year)} className="flex justify-between items-center text-xs w-full hover:bg-slate-700/50 p-1 rounded transition-colors">
                             <span className="text-secondary w-10">{monthNames[month.month - 1]}</span>
-                            <div className="flex-1 mx-2 bg-slate-700 rounded-full h-4 overflow-hidden">
+                            <div className="flex-1 mx-2 bg-slate-700 rounded-full h-4 overflow-hidden flex">
                               <div
                                 className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
-                                style={{ width: `${barHeight}%` }}
+                                style={{ width: `${expensePercent}%` }}
+                              />
+                              <div
+                                className="bg-gradient-to-r from-green-500 to-green-600 h-full transition-all"
+                                style={{ width: `${savingsPercent}%` }}
                               />
                             </div>
-                            <span className="text-primary font-semibold text-right text-xs">Expenses: {display(month.expenses)}</span>
+                            <span className="text-primary font-semibold text-right text-xs">{display(month.expenses)}</span>
                           </button>
                         )
                       })}
@@ -696,21 +727,27 @@ export default function AnalysisPage() {
               // Show selected calendar year
               const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
               const selectedYearData = calendarYearData[selectedCalendarYear] ?? []
-              const selectedYearMax = Math.max(...selectedYearData.map(m => m.expenses), 1)
+              const selectedYearMax = Math.max(...selectedYearData.map(m => m.expenses + m.savings), 1)
 
               return selectedYearData.map((month, idx) => {
-                const barHeight = month.expenses > 0 ? (month.expenses / selectedYearMax) * 100 : 0
+                const total = month.expenses + month.savings
+                const expensePercent = total > 0 ? (month.expenses / total) * 100 : 0
+                const savingsPercent = total > 0 ? (month.savings / total) * 100 : 0
                 return (
                   <button key={idx} onClick={() => handleMonthDrill(month.month, selectedCalendarYear)} className="space-y-1 w-full hover:bg-slate-700/50 p-2 rounded transition-colors">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-secondary w-12">{monthNames[month.month - 1]}</span>
-                      <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
+                      <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative flex">
                         <div
                           className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
-                          style={{ width: `${barHeight}%` }}
+                          style={{ width: `${expensePercent}%` }}
+                        />
+                        <div
+                          className="bg-gradient-to-r from-green-500 to-green-600 h-full transition-all"
+                          style={{ width: `${savingsPercent}%` }}
                         />
                       </div>
-                      <span className="text-primary font-semibold text-right w-32">Expenses: {display(month.expenses)}</span>
+                      <span className="text-primary font-semibold text-right w-32 text-xs">{display(month.expenses)} | {display(month.savings)}</span>
                     </div>
                   </button>
                 )
