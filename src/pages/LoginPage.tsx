@@ -9,13 +9,28 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
+  const [confirmEmail, setConfirmEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
 
-  const switchMode = (m: Mode) => { setMode(m); setError(''); setInfo('') }
+  const switchMode = (m: Mode) => {
+    setMode(m)
+    setError('')
+    setInfo('')
+    setEmail('')
+    setConfirmEmail('')
+    setPassword('')
+    setConfirmPassword('')
+    setFirstName('')
+    setLastName('')
+    setAgreeToTerms(false)
+  }
 
   const handleGoogleSignIn = async () => {
     setError('')
@@ -51,6 +66,15 @@ export default function LoginPage() {
           }
         }
       } else {
+        // Validation for signup
+        if (!firstName.trim()) throw new Error('First name is required')
+        if (!lastName.trim()) throw new Error('Last name is required')
+        if (email !== confirmEmail) throw new Error('Emails do not match')
+        if (password !== confirmPassword) throw new Error('Passwords do not match')
+        if (password.length < 6) throw new Error('Password must be at least 6 characters')
+        if (!agreeToTerms) throw new Error('You must agree to the terms and conditions')
+
+        const fullName = `${firstName.trim()} ${lastName.trim()}`
         const { error: err } = await signUp(email, password, fullName)
         if (err) throw err
         setInfo('Account created — check your email to confirm before signing in.')
@@ -100,14 +124,44 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === 'signup' && (
-              <input className="input" type="text" placeholder="Full Name" value={fullName}
-                onChange={e => setFullName(e.target.value)} required />
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <input className="input" type="text" placeholder="First Name" value={firstName}
+                    onChange={e => setFirstName(e.target.value)} required />
+                  <input className="input" type="text" placeholder="Last Name" value={lastName}
+                    onChange={e => setLastName(e.target.value)} required />
+                </div>
+                <input className="input" type="email" placeholder="Email" value={email}
+                  onChange={e => setEmail(e.target.value)} required />
+                <input className="input" type="email" placeholder="Confirm Email" value={confirmEmail}
+                  onChange={e => setConfirmEmail(e.target.value)} required />
+                <input className="input" type="password" placeholder="Password" value={password}
+                  onChange={e => setPassword(e.target.value)} required minLength={6} />
+                <input className="input" type="password" placeholder="Confirm Password" value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)} required minLength={6} />
+              </>
             )}
-            <input className="input" type="email" placeholder="Email" value={email}
-              onChange={e => setEmail(e.target.value)} required />
-            {mode !== 'forgot' && (
-              <input className="input" type="password" placeholder="Password" value={password}
-                onChange={e => setPassword(e.target.value)} required minLength={6} />
+            {mode !== 'signup' && (
+              <>
+                <input className="input" type="email" placeholder="Email" value={email}
+                  onChange={e => setEmail(e.target.value)} required />
+                {mode !== 'forgot' && (
+                  <input className="input" type="password" placeholder="Password" value={password}
+                    onChange={e => setPassword(e.target.value)} required minLength={6} />
+                )}
+              </>
+            )}
+
+            {mode === 'signup' && (
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 space-y-2">
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  By creating an account, you agree to our Terms of Service and Privacy Policy. We respect your privacy and will only use your information to provide and improve our services.
+                </p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={agreeToTerms} onChange={e => setAgreeToTerms(e.target.checked)} className="w-4 h-4 rounded accent-indigo-500" />
+                  <span className="text-xs text-slate-400">I agree to the Terms of Service and Privacy Policy</span>
+                </label>
+              </div>
             )}
 
             {error && (
