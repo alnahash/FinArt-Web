@@ -154,7 +154,7 @@ export default function TransactionsPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Controls */}
-      <div className="p-4 space-y-3 sticky top-14 bg-slate-950 z-10 border-b border-slate-800">
+      <div className="p-4 space-y-3 sticky top-14 bg-slate-950 z-0 border-b border-slate-800">
         {/* Month selector */}
         <div className="flex items-center justify-between gap-2">
           <button className="btn-ghost" onClick={() => setCurrentDate(d => subMonths(d, 1))}>‹</button>
@@ -215,7 +215,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-auto overflow-x-hidden overflow-y-auto">
+      <div className="flex-1 overflow-auto overflow-x-hidden overflow-y-auto pt-28">
         {loading ? (
           <div className="p-4 space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (
