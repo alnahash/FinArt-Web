@@ -26,6 +26,9 @@ export default function AnalysisPage() {
   const [chartView, setChartView] = useState<'rolling' | 'calendar-all' | 'calendar-selected'>('calendar-selected')
   const [selectedCalendarYear, setSelectedCalendarYear] = useState(2026)
   const [calendarYearData, setCalendarYearData] = useState<Record<number, Array<{ month: number; income: number; expenses: number; savings: number }>>>({})
+  const [drillMonth, setDrillMonth] = useState<{ month: number; year: number } | null>(null)
+  const [drillMonthData, setDrillMonthData] = useState<{ month: number; year: number; income: number; expenses: number; savings: number } | null>(null)
+  const [drillCategoryBreakdown, setDrillCategoryBreakdown] = useState<Array<{ name: string; amount: number; percentage: number }>>([])
 
   const now = new Date()
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -170,6 +173,40 @@ export default function AnalysisPage() {
 
   const display = (amount: number) => hideAmounts ? '••••' : fmtCurrency(amount, currency)
 
+  const handleMonthDrill = async (month: number, year: number) => {
+    if (!user || !categories.length) return
+
+    setDrillMonth({ month, year })
+
+    try {
+      const summary = await getMonthlySummary(user.id, month, year, startDay)
+      setDrillMonthData({
+        month,
+        year,
+        income: summary.totalCredit,
+        expenses: summary.totalDebit,
+        savings: summary.netSavings
+      })
+
+      const catSpend = await getCategorySpending(user.id, month, year, categories, startDay)
+      const breakdown = (catSpend ?? [])
+        .filter(cs => !cs.isIncome && (cs.spent ?? 0) > 0)
+        .sort((a, b) => (b.spent ?? 0) - (a.spent ?? 0))
+        .slice(0, 8)
+
+      const totalSpent = breakdown.reduce((s, c) => s + (c.spent ?? 0), 0)
+      setDrillCategoryBreakdown(
+        breakdown.map(c => ({
+          name: c.category.name,
+          amount: c.spent ?? 0,
+          percentage: totalSpent > 0 ? ((c.spent ?? 0) / totalSpent) * 100 : 0
+        }))
+      )
+    } catch (err) {
+      console.error('Failed to load drill month data:', err)
+    }
+  }
+
   const getCategoryIcon = (categoryName: string): string => {
     const name = categoryName.toLowerCase()
     if (name.includes('coffee') || name.includes('cafe') || name.includes('starbucks')) return '☕'
@@ -309,6 +346,126 @@ export default function AnalysisPage() {
   }
 
   const maxExpense = Math.max(...monthlyData.map(m => m.expenses), 1)
+
+  // Drill-down dashboard when viewing a specific month
+  if (drillMonth && drillMonthData) {
+    const monthName = new Date(drillMonthData.year, drillMonthData.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+    return (
+      <div className="p-4 space-y-4 max-w-5xl mx-auto">
+        {/* Header with back button */}
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => setDrillMonth(null)}
+            className="text-2xl hover:text-purple-400 transition-colors"
+          >
+            ←
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-primary">Viewing {monthName}</h1>
+            <p className="text-secondary text-sm">Detailed breakdown for this month</p>
+          </div>
+        </div>
+
+        {/* Drill month stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-surface rounded-lg p-4 border border-slate-700">
+            <div className="text-xs text-secondary uppercase font-semibold mb-2">Income</div>
+            <div className="text-2xl font-bold text-emerald-400">{display(drillMonthData.income)}</div>
+            <div className="text-xs text-secondary mt-2">{monthName}</div>
+          </div>
+          <div className="bg-surface rounded-lg p-4 border border-slate-700">
+            <div className="text-xs text-secondary uppercase font-semibold mb-2">Expenses</div>
+            <div className="text-2xl font-bold text-red-400">{display(drillMonthData.expenses)}</div>
+            <div className="text-xs text-secondary mt-2">{monthName}</div>
+          </div>
+          <div className="bg-surface rounded-lg p-4 border border-slate-700">
+            <div className="text-xs text-secondary uppercase font-semibold mb-2">Net Savings</div>
+            <div className={`text-2xl font-bold ${drillMonthData.savings >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
+              {display(drillMonthData.savings)}
+            </div>
+            <div className="text-xs text-secondary mt-2">{monthName}</div>
+          </div>
+          <div className="bg-surface rounded-lg p-4 border border-slate-700">
+            <div className="text-xs text-secondary uppercase font-semibold mb-2">Savings Rate</div>
+            <div className="text-2xl font-bold text-cyan-400">
+              {drillMonthData.income > 0 ? ((drillMonthData.savings / drillMonthData.income) * 100).toFixed(1) : '0'}%
+            </div>
+            <div className="text-xs text-secondary mt-2">Of income</div>
+          </div>
+        </div>
+
+        {/* Category Breakdown */}
+        <div className="bg-surface rounded-lg p-6 border border-slate-700">
+          <h2 className="text-lg font-bold text-primary mb-4">Spending by Category</h2>
+          {drillCategoryBreakdown.length > 0 ? (
+            <div className="space-y-4">
+              {drillCategoryBreakdown.map((cat, idx) => (
+                <div key={idx}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{getCategoryIcon(cat.name)}</span>
+                      <span className="text-primary font-medium">{cat.name}</span>
+                    </div>
+                    <span className="text-primary font-semibold">{cat.percentage.toFixed(1)}%</span>
+                  </div>
+                  <div className="bg-slate-800 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-purple-500 h-full transition-all"
+                      style={{ width: `${cat.percentage}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-secondary mt-1">{display(cat.amount)}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-secondary text-sm">No spending data available for this month</p>
+          )}
+        </div>
+
+        {/* Income vs Expenses */}
+        <div className="bg-surface rounded-lg p-6 border border-slate-700">
+          <h2 className="text-lg font-bold text-primary mb-4">Income vs Expenses</h2>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-secondary text-sm">Income</span>
+                <span className="text-emerald-400 font-semibold">{display(drillMonthData.income)}</span>
+              </div>
+              <div className="bg-slate-800 rounded-full h-3 overflow-hidden">
+                <div className="bg-emerald-500 h-full" style={{ width: '100%' }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-secondary text-sm">Expenses</span>
+                <span className="text-red-400 font-semibold">{display(drillMonthData.expenses)}</span>
+              </div>
+              <div className="bg-slate-800 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-red-500 h-full"
+                  style={{ width: drillMonthData.income > 0 ? `${(drillMonthData.expenses / drillMonthData.income) * 100}%` : '0%' }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-secondary text-sm">Savings</span>
+                <span className={`font-semibold ${drillMonthData.savings >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>{display(drillMonthData.savings)}</span>
+              </div>
+              <div className="bg-slate-800 rounded-full h-3 overflow-hidden">
+                <div
+                  className={`h-full ${drillMonthData.savings >= 0 ? 'bg-cyan-500' : 'bg-red-500'}`}
+                  style={{ width: drillMonthData.income > 0 ? `${(drillMonthData.savings / drillMonthData.income) * 100}%` : '0%' }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 space-y-4 max-w-5xl mx-auto">
@@ -464,7 +621,7 @@ export default function AnalysisPage() {
                 const monthLabel = new Date(month.year, month.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
                 const barHeight = month.expenses > 0 ? (month.expenses / maxExpense) * 100 : 0
                 return (
-                  <div key={idx} className="space-y-1">
+                  <button key={idx} onClick={() => handleMonthDrill(month.month, month.year)} className="space-y-1 w-full hover:bg-slate-700/50 p-2 rounded transition-colors">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-secondary w-12">{monthLabel}</span>
                       <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
@@ -475,7 +632,7 @@ export default function AnalysisPage() {
                       </div>
                       <span className="text-primary font-semibold text-right w-32">{display(month.expenses)}</span>
                     </div>
-                  </div>
+                  </button>
                 )
               })
             ) : (
@@ -517,7 +674,7 @@ export default function AnalysisPage() {
                       {(calendarYearData[year] ?? []).map((month, idx) => {
                         const barHeight = month.expenses > 0 ? (month.expenses / allYearsMax) * 100 : 0
                         return (
-                          <div key={idx} className="flex justify-between items-center text-xs">
+                          <button key={idx} onClick={() => handleMonthDrill(month.month, year)} className="flex justify-between items-center text-xs w-full hover:bg-slate-700/50 p-1 rounded transition-colors">
                             <span className="text-secondary w-10">{monthNames[month.month - 1]}</span>
                             <div className="flex-1 mx-2 bg-slate-700 rounded-full h-4 overflow-hidden">
                               <div
@@ -526,7 +683,7 @@ export default function AnalysisPage() {
                               />
                             </div>
                             <span className="text-primary font-semibold text-right w-20 text-xs">{display(month.expenses)}</span>
-                          </div>
+                          </button>
                         )
                       })}
                     </div>
@@ -544,7 +701,7 @@ export default function AnalysisPage() {
               return selectedYearData.map((month, idx) => {
                 const barHeight = month.expenses > 0 ? (month.expenses / selectedYearMax) * 100 : 0
                 return (
-                  <div key={idx} className="space-y-1">
+                  <button key={idx} onClick={() => handleMonthDrill(month.month, selectedCalendarYear)} className="space-y-1 w-full hover:bg-slate-700/50 p-2 rounded transition-colors">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-secondary w-12">{monthNames[month.month - 1]}</span>
                       <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
@@ -555,7 +712,7 @@ export default function AnalysisPage() {
                       </div>
                       <span className="text-primary font-semibold text-right w-32">{display(month.expenses)}</span>
                     </div>
-                  </div>
+                  </button>
                 )
               })
             })()
