@@ -23,6 +23,9 @@ export default function AnalysisPage() {
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly')
   const [categoryTimeView, setCategoryTimeView] = useState<'total' | 'monthly'>('total')
   const [categoryMonthlyBreakdown, setCategoryMonthlyBreakdown] = useState<Array<{ month: string; categories: Array<{ name: string; amount: number }> }>>([])
+  const [chartView, setChartView] = useState<'rolling' | 'calendar-all' | 'calendar-selected'>('calendar-selected')
+  const [selectedCalendarYear, setSelectedCalendarYear] = useState(2026)
+  const [calendarYearData, setCalendarYearData] = useState<Record<number, Array<{ month: number; income: number; expenses: number; savings: number }>>>({})
 
   const now = new Date()
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -86,6 +89,23 @@ export default function AnalysisPage() {
           })
         }
         setYearlyData(yearData)
+
+        // Load calendar year data (Jan-Dec for each year)
+        const calendarData: Record<number, Array<{ month: number; income: number; expenses: number; savings: number }>> = {}
+        for (const year of years) {
+          const monthsData: Array<{ month: number; income: number; expenses: number; savings: number }> = []
+          for (let m = 1; m <= 12; m++) {
+            const summary = await getMonthlySummary(user.id, m, year, startDay)
+            monthsData.push({
+              month: m,
+              income: summary.totalCredit,
+              expenses: summary.totalDebit,
+              savings: summary.netSavings
+            })
+          }
+          calendarData[year] = monthsData
+        }
+        setCalendarYearData(calendarData)
 
         // Get category spending for all months (YTD), not just current month
         let allCatSpending: { [key: string]: { name: string; spent: number } } = {}
@@ -376,50 +396,164 @@ export default function AnalysisPage() {
 
       {/* Monthly/Yearly Trend */}
       <div className="bg-surface rounded-lg p-6 border border-slate-700 relative">
-        <h2 className="text-xl font-bold text-primary mb-4">
-          {viewMode === 'monthly' ? 'Monthly Trend (Last 12 Months)' : 'Yearly Trend (Last 3 Years)'}
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-primary">
+            {chartView === 'rolling'
+              ? (viewMode === 'monthly' ? 'Monthly Trend (Last 12 Months)' : 'Yearly Trend (Last 3 Years)')
+              : chartView === 'calendar-all'
+              ? 'Calendar Year Comparison (All Years)'
+              : `Calendar Year (${selectedCalendarYear})`
+            }
+          </h2>
+
+          {/* Chart View Selector */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setChartView('rolling')}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                chartView === 'rolling'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
+                  : 'text-secondary hover:text-primary bg-slate-700'
+              }`}
+            >
+              Rolling Period
+            </button>
+            <button
+              onClick={() => setChartView('calendar-all')}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                chartView === 'calendar-all'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
+                  : 'text-secondary hover:text-primary bg-slate-700'
+              }`}
+            >
+              All Years
+            </button>
+            <button
+              onClick={() => setChartView('calendar-selected')}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                chartView === 'calendar-selected'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
+                  : 'text-secondary hover:text-primary bg-slate-700'
+              }`}
+            >
+              Selected Year
+            </button>
+
+            {chartView === 'calendar-selected' && (
+              <select
+                value={selectedCalendarYear}
+                onChange={(e) => setSelectedCalendarYear(parseInt(e.target.value))}
+                className="px-3 py-1.5 rounded text-xs bg-slate-700 text-primary border border-slate-600 focus:outline-none"
+              >
+                {years.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
         {trendLoading && (
           <div className="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center z-20">
             <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
         <div className="space-y-3">
-          {viewMode === 'monthly' ? (
-            monthlyData.map((month, idx) => {
-              const monthLabel = new Date(month.year, month.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-              const barHeight = month.expenses > 0 ? (month.expenses / maxExpense) * 100 : 0
-              return (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-secondary w-12">{monthLabel}</span>
-                    <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
-                      <div
-                        className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
-                        style={{ width: `${barHeight}%` }}
-                      />
-                    </div>
-                    <span className="text-primary font-semibold text-right w-32">{display(month.expenses)}</span>
-                  </div>
-                </div>
-              )
-            })
-          ) : (
-            (() => {
-              const maxYearlyExpense = Math.max(...yearlyData.map(y => y.expenses), 1)
-              return yearlyData.map((year, idx) => {
-                const barHeight = year.expenses > 0 ? (year.expenses / maxYearlyExpense) * 100 : 0
+          {chartView === 'rolling' ? (
+            viewMode === 'monthly' ? (
+              monthlyData.map((month, idx) => {
+                const monthLabel = new Date(month.year, month.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+                const barHeight = month.expenses > 0 ? (month.expenses / maxExpense) * 100 : 0
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-secondary w-12">{year.year}</span>
+                      <span className="text-secondary w-12">{monthLabel}</span>
                       <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
                         <div
                           className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
                           style={{ width: `${barHeight}%` }}
                         />
                       </div>
-                      <span className="text-primary font-semibold text-right w-32">{display(year.expenses)}</span>
+                      <span className="text-primary font-semibold text-right w-32">{display(month.expenses)}</span>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              (() => {
+                const maxYearlyExpense = Math.max(...yearlyData.map(y => y.expenses), 1)
+                return yearlyData.map((year, idx) => {
+                  const barHeight = year.expenses > 0 ? (year.expenses / maxYearlyExpense) * 100 : 0
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-secondary w-12">{year.year}</span>
+                        <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
+                          <div
+                            className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
+                            style={{ width: `${barHeight}%` }}
+                          />
+                        </div>
+                        <span className="text-primary font-semibold text-right w-32">{display(year.expenses)}</span>
+                      </div>
+                    </div>
+                  )
+                })
+              })()
+            )
+          ) : chartView === 'calendar-all' ? (
+            (() => {
+              // Show all 3 years calendar data
+              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+              const allYearsMax = Math.max(
+                ...years.flatMap(y => (calendarYearData[y] ?? []).map(m => m.expenses)),
+                1
+              )
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {years.map(year => (
+                    <div key={year} className="space-y-2 p-4 bg-slate-800/30 rounded-lg">
+                      <div className="text-lg font-semibold text-primary mb-4">{year}</div>
+                      {(calendarYearData[year] ?? []).map((month, idx) => {
+                        const barHeight = month.expenses > 0 ? (month.expenses / allYearsMax) * 100 : 0
+                        return (
+                          <div key={idx} className="flex justify-between items-center text-xs">
+                            <span className="text-secondary w-10">{monthNames[month.month - 1]}</span>
+                            <div className="flex-1 mx-2 bg-slate-700 rounded-full h-4 overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
+                                style={{ width: `${barHeight}%` }}
+                              />
+                            </div>
+                            <span className="text-primary font-semibold text-right w-20 text-xs">{display(month.expenses)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )
+            })()
+          ) : (
+            (() => {
+              // Show selected calendar year
+              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+              const selectedYearData = calendarYearData[selectedCalendarYear] ?? []
+              const selectedYearMax = Math.max(...selectedYearData.map(m => m.expenses), 1)
+
+              return selectedYearData.map((month, idx) => {
+                const barHeight = month.expenses > 0 ? (month.expenses / selectedYearMax) * 100 : 0
+                return (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-secondary w-12">{monthNames[month.month - 1]}</span>
+                      <div className="flex-1 mx-4 bg-slate-800 rounded-full h-6 overflow-hidden relative">
+                        <div
+                          className="bg-gradient-to-r from-red-500 to-red-600 h-full transition-all"
+                          style={{ width: `${barHeight}%` }}
+                        />
+                      </div>
+                      <span className="text-primary font-semibold text-right w-32">{display(month.expenses)}</span>
                     </div>
                   </div>
                 )
