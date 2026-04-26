@@ -649,7 +649,10 @@ export default function AnalysisPage() {
                           style={{ width: `${savingsPercent}%` }}
                         />
                       </div>
-                      <span className="text-primary font-semibold text-right w-32 text-xs">{display(month.expenses)} | {display(month.savings)}</span>
+                      <div className="flex flex-col gap-0.5 text-right w-32 text-xs font-semibold">
+                        <span className="text-red-400">{display(month.expenses)}</span>
+                        <span className="text-green-400">{display(month.savings)}</span>
+                      </div>
                     </div>
                   </button>
                 )
@@ -713,7 +716,10 @@ export default function AnalysisPage() {
                                 style={{ width: `${savingsPercent}%` }}
                               />
                             </div>
-                            <span className="text-primary font-semibold text-right text-xs">{display(month.expenses)}</span>
+                            <div className="flex flex-col gap-0.5 text-right text-xs font-semibold">
+                              <span className="text-red-400">{display(month.expenses)}</span>
+                              <span className="text-green-400">{display(month.savings)}</span>
+                            </div>
                           </button>
                         )
                       })}
@@ -747,7 +753,10 @@ export default function AnalysisPage() {
                           style={{ width: `${savingsPercent}%` }}
                         />
                       </div>
-                      <span className="text-primary font-semibold text-right w-32 text-xs">{display(month.expenses)} | {display(month.savings)}</span>
+                      <div className="flex flex-col gap-0.5 text-right w-32 text-xs font-semibold">
+                        <span className="text-red-400">{display(month.expenses)}</span>
+                        <span className="text-green-400">{display(month.savings)}</span>
+                      </div>
                     </div>
                   </button>
                 )
