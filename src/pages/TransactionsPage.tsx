@@ -252,7 +252,7 @@ export default function TransactionsPage() {
 
       {/* FAB */}
       <button onClick={() => setShowAdd(true)}
-        className="absolute bottom-24 right-4 w-14 h-14 bg-indigo-500 hover:bg-indigo-400 text-white rounded-full shadow-lg text-2xl flex items-center justify-center transition-colors z-20">
+        className="fixed bottom-24 right-8 w-14 h-14 bg-indigo-500 hover:bg-indigo-400 text-white rounded-full shadow-lg text-2xl flex items-center justify-center transition-colors z-20">
         +
       </button>
 
