@@ -152,7 +152,7 @@ export default function TransactionsPage() {
   const tree = buildCategoryTree(categories)
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full">
       {/* Controls */}
       <div className="p-4 space-y-3 sticky top-14 bg-slate-950 z-0 border-b border-slate-800">
         {/* Month selector */}
@@ -246,15 +246,14 @@ export default function TransactionsPage() {
                 </button>
               </div>
             )}
+            <button onClick={() => setShowAdd(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-4 text-indigo-400 hover:bg-slate-700/30 transition-colors text-sm font-medium">
+              <span className="text-xl">+</span> Add Transaction
+            </button>
           </div>
         )}
       </div>
 
-      {/* FAB */}
-      <button onClick={() => setShowAdd(true)}
-        className="absolute bottom-24 right-4 w-14 h-14 bg-indigo-500 hover:bg-indigo-400 text-white rounded-full shadow-lg text-2xl flex items-center justify-center transition-colors z-20">
-        +
-      </button>
 
       {showAdd && (
         <AddTransactionModal categories={categories} currency={currency}
