@@ -303,3 +303,9 @@ export const updateLastLogin = async (userId: string) => {
     .update({ last_login_at: now, login_count: newCount })
     .eq('id', userId)
 }
+
+export const updateUserAdminStatus = (userId: string, isAdmin: boolean) =>
+  supabase
+    .from('profiles')
+    .update({ is_admin: isAdmin })
+    .eq('id', userId)

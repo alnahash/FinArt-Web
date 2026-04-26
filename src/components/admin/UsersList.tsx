@@ -9,20 +9,35 @@ interface User {
   last_login_at: string | null
   login_count: number
   email_confirmed: boolean
+  is_admin: boolean
 }
 
 interface UsersListProps {
   users: User[]
+  onAdminToggle?: (userId: string, isAdmin: boolean) => Promise<void>
 }
 
 type SortField = 'created_at' | 'last_login_at' | 'login_count' | 'full_name'
 
-export default function UsersList({ users }: UsersListProps) {
+export default function UsersList({ users, onAdminToggle }: UsersListProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('created_at')
   const [sortAsc, setSortAsc] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const itemsPerPage = 20
+
+  const handleAdminToggle = async (userId: string, currentStatus: boolean) => {
+    if (!onAdminToggle) return
+    setTogglingId(userId)
+    try {
+      await onAdminToggle(userId, !currentStatus)
+    } catch (err) {
+      console.error('Failed to update admin status:', err)
+    } finally {
+      setTogglingId(null)
+    }
+  }
 
   // Filter and sort users
   const filteredUsers = useMemo(() => {
@@ -144,6 +159,7 @@ export default function UsersList({ users }: UsersListProps) {
                 </button>
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-slate-300">Status</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-slate-300">Admin</th>
             </tr>
           </thead>
           <tbody>
@@ -177,6 +193,19 @@ export default function UsersList({ users }: UsersListProps) {
                     >
                       {!user.email_confirmed ? 'Unverified' : getActivityStatus(user.last_login_at)}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <button
+                      onClick={() => handleAdminToggle(user.id, user.is_admin)}
+                      disabled={togglingId === user.id}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        user.is_admin
+                          ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
+                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {togglingId === user.id ? '...' : user.is_admin ? '👑 Admin' : 'User'}
+                    </button>
                   </td>
                 </tr>
               ))

@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
 import { useAuth } from '../hooks/useAuth'
+import { useProfile } from '../hooks/useProfile'
 
 const NAV = [
   { to: '/dashboard', label: 'Home', icon: '⊞' },
@@ -14,6 +15,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const { isDark, toggle } = useTheme()
   const { user } = useAuth()
+  const profile = useProfile()
 
   return (
     <div className="flex flex-col min-h-screen max-w-5xl mx-auto">

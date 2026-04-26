@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
+import { useProfile } from '../hooks/useProfile'
 import AdminLayout from '../components/admin/AdminLayout'
 import UsersList from '../components/admin/UsersList'
 import StatisticsPanel from '../components/admin/StatisticsPanel'
-import { getAllUsers, getAppStatistics } from '../services/db'
+import { getAllUsers, getAppStatistics, updateUserAdminStatus } from '../services/db'
 
 type TabType = 'users' | 'statistics'
 
@@ -29,6 +30,7 @@ interface StatsData {
 
 export default function AdminPage() {
   const { user } = useAuth()
+  const profile = useProfile()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabType>('users')
   const [loading, setLoading] = useState(true)
@@ -38,10 +40,10 @@ export default function AdminPage() {
 
   // Check if user is admin
   useEffect(() => {
-    if (user && user.email !== 'alnahash@gmail.com') {
+    if (user && profile && !profile.is_admin) {
       navigate('/dashboard')
     }
-  }, [user, navigate])
+  }, [user, profile, navigate])
 
   // Fetch data
   useEffect(() => {
@@ -69,12 +71,25 @@ export default function AdminPage() {
     fetchData()
   }, [activeTab])
 
-  if (user?.email !== 'alnahash@gmail.com') {
+  const handleAdminToggle = async (userId: string, isAdmin: boolean) => {
+    try {
+      await updateUserAdminStatus(userId, !isAdmin)
+      // Refresh users list
+      const { data, error } = await getAllUsers()
+      if (error) throw error
+      setUsers(data ?? [])
+    } catch (err) {
+      console.error('Failed to update admin status:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update admin status')
+    }
+  }
+
+  if (!profile?.is_admin) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-950 to-slate-900">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-200 mb-4">Unauthorized</h1>
-          <p className="text-slate-400">You don't have permission to access this page.</p>
+          <p className="text-slate-400">You don't have admin privileges to access this page.</p>
         </div>
       </div>
     )
@@ -93,7 +108,7 @@ export default function AdminPage() {
           <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : activeTab === 'users' ? (
-        <UsersList users={users} />
+        <UsersList users={users} onAdminToggle={handleAdminToggle} />
       ) : (
         <StatisticsPanel stats={stats} />
       )}
