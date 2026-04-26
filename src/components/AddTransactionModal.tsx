@@ -112,14 +112,14 @@ export default function AddTransactionModal({ categories, currency = 'BHD', onCl
         {/* Account */}
         <div className="flex items-center px-5 py-3.5 border-b border-slate-800">
           <span className="text-slate-400 w-28 text-sm shrink-0">{type === 'debit' ? 'Debit A/c' : 'Credit A/c'}</span>
-          <input className="flex-1 bg-transparent text-slate-200 text-right text-sm focus:outline-none placeholder-slate-600"
+          <input className="flex-1 bg-transparent text-slate-200 text-left text-sm focus:outline-none placeholder-slate-600"
             placeholder="Account / bank" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
         </div>
 
         {/* Description */}
         <div className="flex items-center px-5 py-3.5 border-b border-slate-800">
           <span className="text-slate-400 w-28 text-sm shrink-0">Description</span>
-          <input className="flex-1 bg-transparent text-slate-200 text-right text-sm focus:outline-none placeholder-slate-600"
+          <input className="flex-1 bg-transparent text-slate-200 text-left text-sm focus:outline-none placeholder-slate-600"
             placeholder="Name of shop, brand or person" value={merchant} onChange={e => setMerchant(e.target.value)} />
         </div>
 
