@@ -637,16 +637,14 @@ export default function SettingsPage() {
             ✓ All changes saved
           </div>
         )}
-        {hasChanges && !saving && !saved && (
-          <button
-            onClick={handleSaveProfile}
-            disabled={saving}
-            className="w-full py-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 font-bold text-base tracking-wide hover:bg-indigo-500/25 active:bg-indigo-500/35 transition-colors flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <span className="text-xl">💾</span>
-            Save Changes
-          </button>
-        )}
+        <button
+          onClick={handleSaveProfile}
+          disabled={!hasChanges || saving}
+          className="w-full py-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 font-bold text-base tracking-wide hover:bg-indigo-500/25 active:bg-indigo-500/35 transition-colors flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <span className="text-xl">💾</span>
+          Save Changes
+        </button>
       </div>
 
       {/* ── Sign Out ── */}
