@@ -243,50 +243,19 @@ export const copyBudgetsFromPreviousMonth = async (userId: string, month: number
 
 // Admin: Get all users including unverified emails
 export const getAllUsers = () =>
-  supabase
-    .from('profiles')
-    .select('id, full_name, email, currency, created_at, last_login_at, login_count, email_confirmed:email_confirmed, is_admin')
-    .order('created_at', { ascending: false })
+  supabase.rpc('get_all_users_for_admin')
 
 export const getAppStatistics = async () => {
-  // Get total users count
-  const { count: userCount } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
+  const { data, error } = await supabase.rpc('get_app_statistics_for_admin')
+  if (error) throw error
 
-  // Get total transactions count
-  const { count: txCount } = await supabase
-    .from('transactions')
-    .select('id', { count: 'exact', head: true })
-
-  // Get total categories count
-  const { count: catCount } = await supabase
-    .from('categories')
-    .select('id', { count: 'exact', head: true })
-
-  // Calculate average spending (total debits / number of users)
-  const { data: debits } = await supabase
-    .from('transactions')
-    .select('amount')
-    .eq('type', 'debit')
-
-  const totalSpending = (debits ?? []).reduce((sum, t) => sum + Number(t.amount), 0)
-  const avgSpending = userCount ? totalSpending / userCount : 0
-
-  // Get new users this month
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const { count: newUsersCount } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .gte('created_at', monthStart)
-
+  const stats = data?.[0]
   return {
-    totalUsers: userCount ?? 0,
-    totalTransactions: txCount ?? 0,
-    totalCategories: catCount ?? 0,
-    averageSpending: avgSpending,
-    newUsersThisMonth: newUsersCount ?? 0,
+    totalUsers: Number(stats?.total_users ?? 0),
+    totalTransactions: Number(stats?.total_transactions ?? 0),
+    totalCategories: Number(stats?.total_categories ?? 0),
+    averageSpending: Number(stats?.average_spending ?? 0),
+    newUsersThisMonth: Number(stats?.new_users_this_month ?? 0),
   }
 }
 
