@@ -35,13 +35,15 @@ export default function AdminLayout({ activeTab, onTabChange, children }: AdminL
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium"
+              className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-indigo-200 rounded-lg transition-all text-sm font-medium border border-indigo-500/30 hover:border-indigo-500/50"
+              title="Back to Dashboard"
             >
-              ← Dashboard
+              ← Back to Dashboard
             </button>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium"
+              className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 hover:text-red-200 rounded-lg transition-all text-sm font-medium border border-red-500/30 hover:border-red-500/50"
+              title="Logout"
             >
               Logout
             </button>
