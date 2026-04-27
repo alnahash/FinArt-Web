@@ -242,11 +242,13 @@ export const copyBudgetsFromPreviousMonth = async (userId: string, month: number
 // ── Admin ─────────────────────────────────────────────────────────────────
 
 // Admin: Get all users including unverified emails
-export const getAllUsers = () =>
-  supabase
+export const getAllUsers = async () => {
+  const result = await supabase
     .from('profiles')
     .select('id, full_name, email, currency, created_at, last_login_at, login_count, is_admin, email_confirmed')
     .order('created_at', { ascending: false })
+  return result
+}
 
 export const getAppStatistics = async () => {
   const { data, error } = await supabase.rpc('get_app_statistics_for_admin')
