@@ -177,7 +177,25 @@ export default function LoginPage() {
               <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2 text-red-400 text-sm">{error}</div>
             )}
             {info && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-3 py-2 text-green-400 text-sm">{info}</div>
+              <div className="space-y-3">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-3 py-2 text-green-400 text-sm">{info}</div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => switchMode('login')}
+                    className="flex-1 btn-primary text-sm py-2"
+                  >
+                    Continue to Sign In
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="w-full text-center text-xs text-slate-400 hover:text-slate-300 transition-colors py-1"
+                >
+                  Already confirmed your email? Sign in here
+                </button>
+              </div>
             )}
 
             <button type="submit" className="btn-primary w-full" disabled={loading}>
