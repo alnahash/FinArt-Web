@@ -7,6 +7,12 @@ export interface Profile {
   start_month: number
   hide_amounts: boolean
   onboarded: boolean
+  is_admin?: boolean
+  last_login_at?: string | null
+  login_count?: number
+  two_fa_enabled?: boolean
+  two_fa_verified?: boolean
+  two_fa_created_at?: string | null
   created_at: string
   updated_at: string
 }

@@ -309,3 +309,49 @@ export const updateUserAdminStatus = (userId: string, isAdmin: boolean) =>
     .from('profiles')
     .update({ is_admin: isAdmin })
     .eq('id', userId)
+
+// ── Two-Factor Authentication ─────────────────────────────────────────────────
+
+export const initiateTwoFASetup = (userId: string, secret: string) =>
+  supabase
+    .from('profiles')
+    .update({ two_fa_secret: secret })
+    .eq('id', userId)
+
+export const verifyAndCompleteTwoFASetup = (
+  userId: string,
+  secret: string,
+  backupCodes: string[]
+) =>
+  supabase
+    .from('profiles')
+    .update({
+      two_fa_secret: secret,
+      two_fa_enabled: true,
+      two_fa_verified: true,
+      backup_codes: backupCodes,
+      two_fa_created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId)
+
+export const disableTwoFA = (userId: string) =>
+  supabase
+    .from('profiles')
+    .update({
+      two_fa_enabled: false,
+      two_fa_verified: false,
+      two_fa_secret: null,
+      backup_codes: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId)
+
+export const updateBackupCodes = (userId: string, backupCodes: string[]) =>
+  supabase
+    .from('profiles')
+    .update({
+      backup_codes: backupCodes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId)

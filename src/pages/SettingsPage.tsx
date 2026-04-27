@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
+import { useTwoFA } from '../hooks/useTwoFA'
 import { getProfile, updateProfile, signOut, getCategories, createCategory, updateCategory, deleteCategory, reorderCategories, buildCategoryTree } from '../services/db'
+import TwoFASettings from '../components/TwoFASettings'
 import type { Profile, Category, CategoryGroup } from '../types'
 
 const MONTHS = [
@@ -290,6 +292,22 @@ export default function SettingsPage() {
             onChange={v => { setHideAmounts(v); saveProfile({ hide_amounts: v }) }}
           />
         </SettingRow>
+      </Section>
+
+      {/* ── Security ── */}
+      <Section>
+        <div className="px-4 py-4">
+          <TwoFASettings
+            onSetupClick={() => navigate('/settings/2fa-setup')}
+            onDisableClick={async () => {
+              // Reload profile after disabling 2FA
+              if (user) {
+                const { data } = await getProfile(user.id)
+                if (data) setProfile(data)
+              }
+            }}
+          />
+        </div>
       </Section>
 
       {/* ── Categories ── */}

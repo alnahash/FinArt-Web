@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signIn, signUp, getCategories, resetPassword, signInWithGoogle } from '../services/db'
+import { signIn, signUp, getCategories, resetPassword, signInWithGoogle, getProfile } from '../services/db'
 import { supabase } from '../lib/supabase'
 
 type Mode = 'login' | 'signup' | 'forgot'
@@ -60,9 +60,19 @@ export default function LoginPage() {
         const { data, error: err } = await signIn(email, password)
         if (err) throw err
         if (data.user) {
+          // Check if user has 2FA enabled
+          const { data: profile } = await getProfile(data.user.id)
+
           const { data: cats } = await getCategories(data.user.id)
           if (!cats || cats.length === 0) {
             try { await supabase.rpc('create_default_categories', { p_user_id: data.user.id }) } catch { /* ignore */ }
+          }
+
+          // Redirect to 2FA verification if 2FA is enabled
+          if (profile?.two_fa_enabled && profile?.two_fa_verified) {
+            navigate('/login/2fa-verify', { state: { userId: data.user.id, email: data.user.email } })
+          } else {
+            navigate('/dashboard')
           }
         }
       } else {
@@ -81,7 +91,6 @@ export default function LoginPage() {
         setLoading(false)
         return
       }
-      navigate('/dashboard')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Authentication failed')
     } finally {

@@ -10,6 +10,8 @@ import SettingsPage from './pages/SettingsPage'
 import ImportPage from './pages/ImportPage'
 import OnboardingPage from './pages/OnboardingPage'
 import AdminPage from './pages/AdminPage'
+import TwoFAVerifyPage from './pages/TwoFAVerifyPage'
+import TwoFASetupPage from './pages/TwoFASetupPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -26,6 +28,7 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/login/2fa-verify" element={<TwoFAVerifyPage />} />
         <Route path="/onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
         <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
         <Route path="/" element={<PrivateRoute><OnboardingRedirect><Layout /></OnboardingRedirect></PrivateRoute>}>
@@ -35,6 +38,7 @@ export default function App() {
           <Route path="budget" element={<BudgetPage />} />
           <Route path="analysis" element={<AnalysisPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings/2fa-setup" element={<TwoFASetupPage />} />
           <Route path="import" element={<ImportPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
