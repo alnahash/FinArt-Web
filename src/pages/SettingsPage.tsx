@@ -60,6 +60,8 @@ export default function SettingsPage() {
   const [newCatIcon, setNewCatIcon] = useState('')
   const [editIcon, setEditIcon] = useState('')
   const [showIconPicker, setShowIconPicker] = useState<'add' | string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [hasChanges, setHasChanges] = useState(false)
 
   const loadCategories = async () => {
     if (!user) return
@@ -93,13 +95,26 @@ export default function SettingsPage() {
   const saveProfile = async (updates: Partial<Parameters<typeof updateProfile>[1]>) => {
     if (!user) return
     setSaving(true)
-    await updateProfile(user.id, updates)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setSaveError(null)
+    try {
+      const { error } = await updateProfile(user.id, updates)
+      if (error) {
+        setSaveError(error.message || 'Failed to save changes')
+        console.error('Save error:', error)
+      } else {
+        setSaved(true)
+        setHasChanges(false)
+        setTimeout(() => setSaved(false), 2000)
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'An error occurred while saving')
+      console.error('Save exception:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleSaveProfile = () =>
+  const handleSaveProfile = () => {
     saveProfile({
       full_name: fullName,
       monthly_budget: budgetEnabled ? Number(monthlyBudget) || 0 : 0,
@@ -108,6 +123,7 @@ export default function SettingsPage() {
       start_month: startMonth,
       hide_amounts: hideAmounts,
     })
+  }
 
   const handleAddCategory = async () => {
     if (!user || !newCatName.trim()) return
@@ -215,7 +231,7 @@ export default function SettingsPage() {
           <input
             className="bg-transparent text-slate-300 text-sm text-right focus:outline-none w-36"
             value={fullName}
-            onChange={e => setFullName(e.target.value)}
+            onChange={e => { setFullName(e.target.value); setHasChanges(true) }}
             onBlur={() => saveProfile({ full_name: fullName })}
             placeholder="Your name"
           />
@@ -231,14 +247,14 @@ export default function SettingsPage() {
                 className="bg-slate-700 text-slate-200 text-sm text-right focus:outline-none w-24 px-2 py-1 rounded-lg"
                 type="number"
                 value={monthlyBudget}
-                onChange={e => setMonthlyBudget(e.target.value)}
+                onChange={e => { setMonthlyBudget(e.target.value); setHasChanges(true) }}
                 onBlur={handleSaveProfile}
                 placeholder="0"
               />
             )}
             <Toggle
               value={budgetEnabled}
-              onChange={v => { setBudgetEnabled(v); if (!v) saveProfile({ monthly_budget: 0 }) }}
+              onChange={v => { setBudgetEnabled(v); setHasChanges(true); if (!v) saveProfile({ monthly_budget: 0 }) }}
             />
           </div>
         </SettingRow>
@@ -247,7 +263,7 @@ export default function SettingsPage() {
           <select
             className="bg-transparent text-slate-400 text-sm focus:outline-none cursor-pointer appearance-none"
             value={currency}
-            onChange={e => { setCurrency(e.target.value); saveProfile({ currency: e.target.value }) }}
+            onChange={e => { setCurrency(e.target.value); setHasChanges(true); saveProfile({ currency: e.target.value }) }}
           >
             {CURRENCIES.map(c => (
               <option key={c.code} value={c.code} className="bg-slate-900">{c.label}</option>
@@ -262,7 +278,7 @@ export default function SettingsPage() {
             min={1}
             max={28}
             value={monthStartDay}
-            onChange={e => setMonthStartDay(Number(e.target.value))}
+            onChange={e => { setMonthStartDay(Number(e.target.value)); setHasChanges(true) }}
             onBlur={() => saveProfile({ month_start_day: monthStartDay })}
           />
         </SettingRow>
@@ -271,7 +287,7 @@ export default function SettingsPage() {
           <select
             className="bg-transparent text-slate-400 text-sm focus:outline-none cursor-pointer appearance-none"
             value={startMonth}
-            onChange={e => { setStartMonth(Number(e.target.value)); saveProfile({ start_month: Number(e.target.value) }) }}
+            onChange={e => { setStartMonth(Number(e.target.value)); setHasChanges(true); saveProfile({ start_month: Number(e.target.value) }) }}
           >
             {MONTHS.map((m, i) => (
               <option key={i + 1} value={i + 1} className="bg-slate-900">{m}</option>
@@ -289,7 +305,7 @@ export default function SettingsPage() {
         <SettingRow icon="🙈" title="Hide Amounts" subtitle="Hide amounts while showing the app to others">
           <Toggle
             value={hideAmounts}
-            onChange={v => { setHideAmounts(v); saveProfile({ hide_amounts: v }) }}
+            onChange={v => { setHideAmounts(v); setHasChanges(true); saveProfile({ hide_amounts: v }) }}
           />
         </SettingRow>
       </Section>
@@ -603,16 +619,34 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {saving && (
-        <div className="px-4">
-          <div className="btn-primary w-full text-center py-3 text-sm opacity-60">Saving…</div>
-        </div>
-      )}
-      {saved && (
-        <div className="px-4">
-          <div className="btn-primary w-full text-center py-3 text-sm">✓ Saved</div>
-        </div>
-      )}
+      {/* ── Save Changes ── */}
+      <div className="px-4 py-3 space-y-2">
+        {saveError && (
+          <div className="w-full py-3 px-4 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 font-medium text-sm text-center">
+            ❌ {saveError}
+          </div>
+        )}
+        {saving && (
+          <div className="w-full py-3 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 font-medium text-sm text-center">
+            💾 Saving…
+          </div>
+        )}
+        {saved && (
+          <div className="w-full py-3 rounded-2xl bg-green-500/15 border border-green-500/30 text-green-400 font-medium text-sm text-center">
+            ✓ All changes saved
+          </div>
+        )}
+        {hasChanges && !saving && !saved && (
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className="w-full py-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 font-bold text-base tracking-wide hover:bg-indigo-500/25 active:bg-indigo-500/35 transition-colors flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <span className="text-xl">💾</span>
+            Save Changes
+          </button>
+        )}
+      </div>
 
       {/* ── Sign Out ── */}
       <div className="px-4 pb-8 pt-2">
