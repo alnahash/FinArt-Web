@@ -620,6 +620,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── Save Changes ── */}
+      {/* DEBUG: hasChanges={hasChanges} saving={saving} saved={saved} */}
       <div className="px-4 py-3 space-y-2">
         {saveError && (
           <div className="w-full py-3 px-4 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 font-medium text-sm text-center">
