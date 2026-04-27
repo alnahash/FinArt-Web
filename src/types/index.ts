@@ -12,7 +12,9 @@ export interface Profile {
   login_count?: number
   two_fa_enabled?: boolean
   two_fa_verified?: boolean
+  two_fa_secret?: string | null
   two_fa_created_at?: string | null
+  backup_codes?: string[] | null
   created_at: string
   updated_at: string
 }

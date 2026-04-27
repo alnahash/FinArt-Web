@@ -9,7 +9,7 @@ interface User {
   last_login_at: string | null
   login_count: number
   email_confirmed: boolean
-  is_admin: boolean
+  is_admin?: boolean
 }
 
 interface UsersListProps {
@@ -196,7 +196,7 @@ export default function UsersList({ users, onAdminToggle }: UsersListProps) {
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <button
-                      onClick={() => handleAdminToggle(user.id, user.is_admin)}
+                      onClick={() => handleAdminToggle(user.id, user.is_admin ?? false)}
                       disabled={togglingId === user.id}
                       className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                         user.is_admin

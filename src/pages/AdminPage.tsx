@@ -18,6 +18,7 @@ interface UserData {
   last_login_at: string | null
   login_count: number
   email_confirmed: boolean
+  is_admin?: boolean
 }
 
 interface StatsData {
