@@ -242,9 +242,11 @@ export const copyBudgetsFromPreviousMonth = async (userId: string, month: number
 // ── Admin ─────────────────────────────────────────────────────────────────
 
 // Admin: Get all users including unverified emails
-// Uses RPC function that joins auth.users with profiles table
 export const getAllUsers = () =>
-  supabase.rpc('get_all_users_with_profiles')
+  supabase
+    .from('profiles')
+    .select('id, full_name, email, currency, created_at, last_login_at, login_count, email_confirmed:email_confirmed, is_admin')
+    .order('created_at', { ascending: false })
 
 export const getAppStatistics = async () => {
   // Get total users count
