@@ -32,12 +32,20 @@ export default function AdminLayout({ activeTab, onTabChange, children }: AdminL
             </div>
             <h1 className="text-2xl font-bold text-slate-50">Admin Control Panel</h1>
           </div>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium"
+            >
+              ← Dashboard
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
